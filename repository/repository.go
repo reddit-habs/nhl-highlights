@@ -11,6 +11,7 @@ const schema = `
 CREATE TABLE IF NOT EXISTS games (
 	game_id INTEGER PRIMARY KEY NOT NULL,
 	date TEXT NOT NULL,
+	type TEXT NOT NULL,
 	away TEXT NOT NULL,
 	home TEXT NOT NULL,
 	season TEXT NOT NULL,
@@ -23,8 +24,8 @@ type Repository struct {
 	db *sql.DB
 }
 
-func New() (*Repository, error) {
-	db, err := sql.Open("sqlite3", "file:games.db")
+func New(path string) (*Repository, error) {
+	db, err := sql.Open("sqlite3", "file:"+path)
 	if err != nil {
 		return nil, err
 	}
@@ -39,11 +40,12 @@ func New() (*Repository, error) {
 }
 
 func (r *Repository) GetGame(gameID int64) (*Game, error) {
-	row := r.db.QueryRow("SELECT game_id, date, away, home, season, recap, extended FROM games WHERE game_id = ?", gameID)
+	row := r.db.QueryRow("SELECT game_id, date, type, away, home, season, recap, extended FROM games WHERE game_id = ?", gameID)
 	game := &Game{}
 	err := row.Scan(
 		&game.GameID,
 		&game.Date,
+		&game.Type,
 		&game.Away,
 		&game.Home,
 		&game.Season,
@@ -59,8 +61,8 @@ func (r *Repository) GetGame(gameID int64) (*Game, error) {
 	return game, nil
 }
 
-func (r *Repository) GetGameMissing() ([]*Game, error) {
-	rows, err := r.db.Query("SELECT game_id, date, away, home, season, recap, extended FROM games WHERE recap IS NULL or extended IS NULL")
+func (r *Repository) GetGamesMissingContent() ([]*Game, error) {
+	rows, err := r.db.Query("SELECT game_id, date, type, away, home, season, recap, extended FROM games WHERE recap IS NULL or extended IS NULL")
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +74,7 @@ func (r *Repository) GetGameMissing() ([]*Game, error) {
 		err := rows.Scan(
 			&game.GameID,
 			&game.Date,
+			&game.Type,
 			&game.Away,
 			&game.Home,
 			&game.Season,
@@ -89,16 +92,17 @@ func (r *Repository) GetGameMissing() ([]*Game, error) {
 
 func (r *Repository) UpsertGame(game *Game) error {
 	result, err := r.db.Exec(
-		`INSERT INTO games (game_id, date, away, home, season, recap, extended)
-		 VALUES (?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO games (game_id, date, type, away, home, season, recap, extended)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT(game_id) DO UPDATE SET
 			date=excluded.date,
+			type=excluded.type,
 			away=excluded.away,
 			home=excluded.home,
 			season=excluded.season,
 			recap=excluded.recap,
 			extended=excluded.extended`,
-		game.GameID, game.Date, game.Away, game.Home,
+		game.GameID, game.Date, game.Type, game.Away, game.Home,
 		game.Season, game.Recap, game.Extended,
 	)
 	if err != nil {

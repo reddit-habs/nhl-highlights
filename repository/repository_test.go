@@ -8,13 +8,14 @@ import (
 )
 
 func TestGames(t *testing.T) {
-	r, err := New()
+	r, err := New(":memory:")
 	require.NoError(t, err)
 
 	// Insert
 	err = r.UpsertGame(&Game{
 		GameID: 20210629,
 		Date:   "2021-06-29",
+		Type:   "R",
 		Away:   "MTL",
 		Home:   "TBL",
 		Season: "20212022",
@@ -22,7 +23,7 @@ func TestGames(t *testing.T) {
 	require.NoError(t, err)
 
 	// Select missing
-	games, err := r.GetGameMissing()
+	games, err := r.GetGamesMissingContent()
 	require.NoError(t, err)
 	require.Equal(t, 1, len(games))
 
@@ -34,6 +35,7 @@ func TestGames(t *testing.T) {
 	updated := &Game{
 		GameID:   20210629,
 		Date:     "2022-06-29",
+		Type:     "P",
 		Away:     "SJS",
 		Home:     "LAK",
 		Season:   "20212023",

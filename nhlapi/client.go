@@ -34,3 +34,22 @@ func (c Client) Schedule(startDate, endDate string) (*ScheduleResponse, error) {
 
 	return body, err
 }
+
+func (c Client) Content(gameID int64) (*ContentResponse, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://statsapi.web.nhl.com/api/v1/game/%d/content", gameID), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	body := &ContentResponse{}
+	if err := json.NewDecoder(resp.Body).Decode(body); err != nil {
+		return nil, err
+	}
+
+	return body, err
+}

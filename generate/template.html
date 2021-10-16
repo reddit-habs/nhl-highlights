@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>NHL {{.Season}} game recaps</title>
+</head>
+
+<body>
+    <div>
+        <a href="index.html">Home</a> |
+        {{range $team := .Teams}}
+        <a href="{{$team.Abbrev}}.html">{{$team.Abbrev}}</a>
+        {{end}}
+    </div>
+    <hr />
+    {{range $date := .Dates}}
+    <h3>{{$date.Date}}</h3>
+    <table border="0" cellpadding="5">
+        <thead>
+            <tr>
+                <th>Home</th>
+                <th>Away</th>
+                <th>Type</th>
+                <th>Recap</th>
+                <th>Extended</th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range $game := $date.Games}}
+            <tr>
+                <td>{{$game.Home}}</td>
+                <td>{{$game.Away}}</td>
+                <td>{{$game.Type}}</td>
+                <td>
+                    {{if $game.Recap}}
+                    <a href="{{$game.Recap}}" target="_blank">link</a>
+                    {{else}}
+                    -
+                    {{end}}
+                </td>
+                <td>
+                    {{if $game.Extended}}
+                    <a href="{{$game.Extended}}" target="_blank">link</a>
+                    {{else}}
+                    -
+                    {{end}}
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
+    </table>
+    <hr />
+    {{end}}
+</body>
+
+</html>

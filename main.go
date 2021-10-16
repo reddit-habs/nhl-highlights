@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/sbstp/nhl-highlights/addrof"
+	"github.com/sbstp/nhl-highlights/generate"
 	"github.com/sbstp/nhl-highlights/nhlapi"
 	"github.com/sbstp/nhl-highlights/repository"
 )
@@ -60,6 +61,13 @@ func realMain() error {
 			return err
 		}
 	}
+
+	games, err := repo.GetGames()
+	if err != nil {
+		return err
+	}
+
+	generate.Pages(games)
 
 	return nil
 }

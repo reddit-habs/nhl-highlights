@@ -39,34 +39,8 @@ func New(path string) (*Repository, error) {
 	}, nil
 }
 
-func (r *Repository) GetGame(gameID int64) (*Game, error) {
-	row := r.db.QueryRow("SELECT game_id, date, type, away, home, season, recap, extended FROM games WHERE game_id = ?", gameID)
-	game := &Game{}
-	err := row.Scan(
-		&game.GameID,
-		&game.Date,
-		&game.Type,
-		&game.Away,
-		&game.Home,
-		&game.Season,
-		&game.Recap,
-		&game.Extended,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return game, nil
-}
-
-func (r *Repository) GetGamesMissingContent() ([]*Game, error) {
-	rows, err := r.db.Query("SELECT game_id, date, type, away, home, season, recap, extended FROM games WHERE recap IS NULL or extended IS NULL")
-	if err != nil {
-		return nil, err
-	}
-
+func (r *Repository) scanGames(rows *sql.Rows) ([]*Game, error) {
+	defer rows.Close()
 	games := make([]*Game, 0)
 
 	for rows.Next() {
@@ -88,6 +62,43 @@ func (r *Repository) GetGamesMissingContent() ([]*Game, error) {
 	}
 
 	return games, nil
+}
+
+func (r *Repository) GetGame(gameID int64) (*Game, error) {
+	rows, err := r.db.Query("SELECT game_id, date, type, away, home, season, recap, extended FROM games WHERE game_id = ?", gameID)
+	if err != nil {
+		return nil, err
+	}
+
+	games, err := r.scanGames(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	var game *Game
+	if len(games) > 0 {
+		game = games[0]
+	}
+
+	return game, nil
+}
+
+func (r *Repository) GetGamesMissingContent() ([]*Game, error) {
+	rows, err := r.db.Query("SELECT game_id, date, type, away, home, season, recap, extended FROM games WHERE recap IS NULL or extended IS NULL")
+	if err != nil {
+		return nil, err
+	}
+
+	return r.scanGames(rows)
+}
+
+func (r *Repository) GetGames() ([]*Game, error) {
+	rows, err := r.db.Query("SELECT game_id, date, type, away, home, season, recap, extended FROM games ORDER BY date DESC")
+	if err != nil {
+		return nil, err
+	}
+
+	return r.scanGames(rows)
 }
 
 func (r *Repository) UpsertGame(game *Game) error {

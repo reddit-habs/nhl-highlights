@@ -1,8 +1,9 @@
 package nhlapi
 
 import (
-	_ "embed" // teams.json
+	_ "embed"
 	"encoding/json"
+	"sort"
 )
 
 type Team struct {
@@ -37,4 +38,8 @@ func init() {
 	for _, team := range Teams {
 		TeamsByID[team.ID] = team
 	}
+
+	sort.Slice(Teams, func(i, j int) bool {
+		return Teams[i].Abbrev < Teams[j].Abbrev
+	})
 }

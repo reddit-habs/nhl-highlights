@@ -67,7 +67,9 @@ func realMain() error {
 		return err
 	}
 
-	generate.Pages(games)
+	if err := generate.Pages(games); err != nil {
+		return err
+	}
 
 	return nil
 }

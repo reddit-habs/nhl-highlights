@@ -20,14 +20,20 @@ var tpl = template.Must(template.New("template.html").Parse(tplSource))
 func Pages(games []*repository.Game) error {
 	bySeason := groupBySeason(games)
 
+	seasons := make([]string, 0)
+	for season := range bySeason {
+		seasons = append(seasons, season)
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(seasons)))
+
 	for season, games := range bySeason {
-		season = cleanupSeason(season)
 		outputPath := path.Join("output", season, "index.html")
 
 		err := generateFile(outputPath, &Root{
-			Season: season,
-			Teams:  nhlapi.Teams,
-			Dates:  groupByDate(games),
+			Season:  season,
+			Seasons: seasons,
+			Teams:   nhlapi.Teams,
+			Dates:   groupByDate(games),
 		})
 		if err != nil {
 			return err
@@ -38,9 +44,10 @@ func Pages(games []*repository.Game) error {
 			outputPath := path.Join("output", season, team+".html")
 
 			err := generateFile(outputPath, &Root{
-				Season: season,
-				Teams:  nhlapi.Teams,
-				Dates:  groupByDate(games),
+				Season:  season,
+				Seasons: seasons,
+				Teams:   nhlapi.Teams,
+				Dates:   groupByDate(games),
 			})
 			if err != nil {
 				return err
@@ -71,9 +78,10 @@ func generateFile(outputPath string, root *Root) error {
 }
 
 type Root struct {
-	Season string
-	Teams  []*nhlapi.Team
-	Dates  []Date
+	Season  string
+	Seasons []string
+	Teams   []*nhlapi.Team
+	Dates   []Date
 }
 
 type Date struct {
@@ -88,7 +96,8 @@ func cleanupSeason(s string) string {
 func groupBySeason(games []*repository.Game) map[string][]*repository.Game {
 	result := make(map[string][]*repository.Game)
 	for _, game := range games {
-		result[game.Season] = append(result[game.Season], game)
+		season := cleanupSeason(game.Season)
+		result[season] = append(result[season], game)
 	}
 	return result
 }

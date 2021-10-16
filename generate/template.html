@@ -14,6 +14,12 @@
         {{end}}
     </div>
     <hr />
+    <div>
+        {{range $season := .Seasons}}
+        <a href="../{{$season}}/index.html">{{$season}}</a>
+        {{end}}
+    </div>
+    <hr />
     {{range $date := .Dates}}
     <h3>{{$date.Date}}</h3>
     <table border="0" cellpadding="5">

@@ -1,7 +1,10 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/sbstp/nhl-highlights/addrof"
@@ -10,7 +13,27 @@ import (
 	"github.com/sbstp/nhl-highlights/repository"
 )
 
+var incremental bool
+var startDate string
+var endDate string
+var outputDir string
+
 func main() {
+	flag.BoolVar(&incremental, "incremental", false, "try to get highlights from the past few days")
+	flag.StringVar(&startDate, "start-date", "", "start date of scan")
+	flag.StringVar(&endDate, "end-date", "", "end date of scan")
+	flag.StringVar(&outputDir, "output-dir", "output", "directory where HTML files end up")
+	flag.Parse()
+
+	if !incremental && (len(startDate) == 0 || len(endDate) == 0) {
+		fmt.Fprintln(os.Stderr, "-start-date and -end-date are required in scan mode")
+		return
+	}
+
+	if incremental && (len(startDate) > 0 || len(endDate) > 0) {
+		fmt.Fprintln(os.Stderr, "-start-date and -end-date have no meaning in incremental mode")
+	}
+
 	if err := realMain(); err != nil {
 		log.Fatal(err)
 	}
@@ -23,28 +46,35 @@ func realMain() error {
 	}
 	client := nhlapi.NewClient()
 
-	schedule, err := client.Schedule("2021-10-01", "2021-10-15")
+	schedule, err := client.Schedule(startDate, endDate)
 	if err != nil {
 		return err
 	}
 
 	for _, date := range schedule.Dates {
 		for _, game := range date.Games {
+			if game.Type == "A" || game.Type == "WA" {
+				continue
+			}
 			exists, err := repo.GetGame(game.GameID)
 			if err != nil {
 				return err
 			}
 			if exists == nil {
-				if err := repo.UpsertGame(gameFromSchedule(date.Date, game)); err != nil {
+				g := gameFromSchedule(date.Date, game)
+				if g == nil {
+					continue
+				}
+				if err := repo.UpsertGame(g); err != nil {
 					return err
 				}
 			}
 		}
 	}
 
-	missing, err := repo.GetGamesMissingContent()
+	missing, err := repo.GetGamesMissingContent(incremental)
 	for _, game := range missing {
-		log.Printf("Getting content for game %d", game.GameID)
+		log.Printf("Getting content for game %d, date=%s", game.GameID, game.Date)
 		content, err := client.Content(game.GameID)
 		if err != nil {
 			return err
@@ -67,7 +97,7 @@ func realMain() error {
 		return err
 	}
 
-	if err := generate.Pages(games); err != nil {
+	if err := generate.Pages(outputDir, games); err != nil {
 		return err
 	}
 
@@ -75,12 +105,20 @@ func realMain() error {
 }
 
 func gameFromSchedule(date string, game *nhlapi.ScheduleGame) *repository.Game {
+	away, ok := nhlapi.TeamsByID[game.Teams.Away.TeamID.ID]
+	if !ok {
+		return nil
+	}
+	home, ok := nhlapi.TeamsByID[game.Teams.Home.TeamID.ID]
+	if !ok {
+		return nil
+	}
 	return &repository.Game{
 		GameID:   game.GameID,
 		Date:     date,
 		Type:     game.Type,
-		Away:     nhlapi.TeamsByID[game.Teams.Away.TeamID.ID].Abbrev,
-		Home:     nhlapi.TeamsByID[game.Teams.Home.TeamID.ID].Abbrev,
+		Away:     away.Abbrev,
+		Home:     home.Abbrev,
 		Season:   game.Season,
 		Recap:    nil,
 		Extended: nil,

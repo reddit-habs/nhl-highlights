@@ -23,7 +23,7 @@ func TestGames(t *testing.T) {
 	require.NoError(t, err)
 
 	// Select missing
-	games, err := r.GetGamesMissingContent()
+	games, err := r.GetGamesMissingContent(false)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(games))
 

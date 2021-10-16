@@ -17,7 +17,7 @@ var tplSource string
 
 var tpl = template.Must(template.New("template.html").Parse(tplSource))
 
-func Pages(games []*repository.Game) error {
+func Pages(outputDir string, games []*repository.Game) error {
 	bySeason := groupBySeason(games)
 
 	seasons := make([]string, 0)
@@ -27,7 +27,7 @@ func Pages(games []*repository.Game) error {
 	sort.Sort(sort.Reverse(sort.StringSlice(seasons)))
 
 	for season, games := range bySeason {
-		outputPath := path.Join("output", season, "index.html")
+		outputPath := path.Join(outputDir, season, "index.html")
 
 		err := generateFile(outputPath, &Root{
 			Season:  season,
@@ -41,7 +41,7 @@ func Pages(games []*repository.Game) error {
 
 		teams := groupByTeam(games)
 		for team, games := range teams {
-			outputPath := path.Join("output", season, team+".html")
+			outputPath := path.Join(outputDir, season, team+".html")
 
 			err := generateFile(outputPath, &Root{
 				Season:  season,

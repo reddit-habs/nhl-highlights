@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -60,7 +61,6 @@ func (r *Repository) scanGames(rows *sql.Rows) ([]*Game, error) {
 		}
 		games = append(games, game)
 	}
-
 	return games, nil
 }
 
@@ -83,8 +83,16 @@ func (r *Repository) GetGame(gameID int64) (*Game, error) {
 	return game, nil
 }
 
-func (r *Repository) GetGamesMissingContent() ([]*Game, error) {
-	rows, err := r.db.Query("SELECT game_id, date, type, away, home, season, recap, extended FROM games WHERE recap IS NULL or extended IS NULL")
+func (r *Repository) GetGamesMissingContent(incremental bool) ([]*Game, error) {
+	args := []interface{}{}
+	query := "SELECT game_id, date, type, away, home, season, recap, extended FROM games WHERE (recap IS NULL or extended IS NULL)"
+	if incremental {
+		query += " AND date >= ?"
+		cutoff := time.Now().AddDate(0, 0, -3).Format("2006-01-02")
+		fmt.Println(cutoff)
+		args = append(args, cutoff)
+	}
+	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}

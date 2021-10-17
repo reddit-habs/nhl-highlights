@@ -40,14 +40,14 @@
                 <td>{{$game.Away}}</td>
                 <td>{{$game.Type}}</td>
                 <td>
-                    {{if $game.Recap}}
+                    {{if $game.Recap.Valid}}
                     <a href="{{$game.Recap}}" target="_blank">link</a>
                     {{else}}
                     -
                     {{end}}
                 </td>
                 <td>
-                    {{if $game.Extended}}
+                    {{if $game.Extended.Valid}}
                     <a href="{{$game.Extended}}" target="_blank">link</a>
                     {{else}}
                     -

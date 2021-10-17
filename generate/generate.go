@@ -46,6 +46,8 @@ func Pages(outputDir string, games []*models.Game) error {
 		}
 	}
 
+	os.Symlink(path.Join(seasons[0]), path.Join(outputDir, "current"))
+
 	return nil
 }
 

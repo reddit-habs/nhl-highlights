@@ -7,10 +7,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sbstp/nhl-highlights/addrof"
 	"github.com/sbstp/nhl-highlights/generate"
+	"github.com/sbstp/nhl-highlights/models"
 	"github.com/sbstp/nhl-highlights/nhlapi"
 	"github.com/sbstp/nhl-highlights/repository"
+	"github.com/volatiletech/null/v8"
 )
 
 var incremental bool
@@ -81,10 +82,10 @@ func realMain() error {
 		}
 		for _, epg := range content.Media.EPG {
 			if epg.Title == "Recap" && len(epg.Items) > 0 {
-				game.Recap = addrof.String(getBestMp4Playback(epg.Items[0].Playbacks))
+				game.Recap = null.StringFrom(getBestMp4Playback(epg.Items[0].Playbacks))
 			}
 			if epg.Title == "Extended Highlights" && len(epg.Items) > 0 {
-				game.Extended = addrof.String(getBestMp4Playback(epg.Items[0].Playbacks))
+				game.Extended = null.StringFrom(getBestMp4Playback(epg.Items[0].Playbacks))
 			}
 		}
 		if err := repo.UpsertGame(game); err != nil {
@@ -104,7 +105,7 @@ func realMain() error {
 	return nil
 }
 
-func gameFromSchedule(date string, game *nhlapi.ScheduleGame) *repository.Game {
+func gameFromSchedule(date string, game *nhlapi.ScheduleGame) *models.Game {
 	away, ok := nhlapi.TeamsByID[game.Teams.Away.TeamID.ID]
 	if !ok {
 		return nil
@@ -113,15 +114,15 @@ func gameFromSchedule(date string, game *nhlapi.ScheduleGame) *repository.Game {
 	if !ok {
 		return nil
 	}
-	return &repository.Game{
+	return &models.Game{
 		GameID:   game.GameID,
 		Date:     date,
 		Type:     game.Type,
 		Away:     away.Abbrev,
 		Home:     home.Abbrev,
 		Season:   game.Season,
-		Recap:    nil,
-		Extended: nil,
+		Recap:    null.String{},
+		Extended: null.String{},
 	}
 }
 

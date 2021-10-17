@@ -3,8 +3,9 @@ package repository
 import (
 	"testing"
 
-	"github.com/sbstp/nhl-highlights/addrof"
+	"github.com/sbstp/nhl-highlights/models"
 	"github.com/stretchr/testify/require"
+	"github.com/volatiletech/null/v8"
 )
 
 func TestGames(t *testing.T) {
@@ -12,7 +13,7 @@ func TestGames(t *testing.T) {
 	require.NoError(t, err)
 
 	// Insert
-	err = r.UpsertGame(&Game{
+	err = r.UpsertGame(&models.Game{
 		GameID: 20210629,
 		Date:   "2021-06-29",
 		Type:   "R",
@@ -32,15 +33,15 @@ func TestGames(t *testing.T) {
 	require.Equal(t, games[0], game)
 
 	// Update
-	updated := &Game{
+	updated := &models.Game{
 		GameID:   20210629,
 		Date:     "2022-06-29",
 		Type:     "P",
 		Away:     "SJS",
 		Home:     "LAK",
 		Season:   "20212023",
-		Recap:    addrof.String("recap"),
-		Extended: addrof.String("extended"),
+		Recap:    null.StringFrom("recap"),
+		Extended: null.StringFrom("extended"),
 	}
 	err = r.UpsertGame(updated)
 	require.NoError(t, err)

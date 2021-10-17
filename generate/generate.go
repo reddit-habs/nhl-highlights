@@ -8,8 +8,8 @@ import (
 	"sort"
 	"text/template"
 
+	"github.com/sbstp/nhl-highlights/models"
 	"github.com/sbstp/nhl-highlights/nhlapi"
-	"github.com/sbstp/nhl-highlights/repository"
 )
 
 //go:embed template.html
@@ -17,7 +17,7 @@ var tplSource string
 
 var tpl = template.Must(template.New("template.html").Parse(tplSource))
 
-func Pages(outputDir string, games []*repository.Game) error {
+func Pages(outputDir string, games []*models.Game) error {
 	bySeason := groupBySeason(games)
 
 	seasons := make([]string, 0)
@@ -86,15 +86,15 @@ type Root struct {
 
 type Date struct {
 	Date  string
-	Games []*repository.Game
+	Games []*models.Game
 }
 
 func cleanupSeason(s string) string {
 	return s[:4] + "-" + s[4:]
 }
 
-func groupBySeason(games []*repository.Game) map[string][]*repository.Game {
-	result := make(map[string][]*repository.Game)
+func groupBySeason(games []*models.Game) map[string][]*models.Game {
+	result := make(map[string][]*models.Game)
 	for _, game := range games {
 		season := cleanupSeason(game.Season)
 		result[season] = append(result[season], game)
@@ -102,8 +102,8 @@ func groupBySeason(games []*repository.Game) map[string][]*repository.Game {
 	return result
 }
 
-func groupByDate(games []*repository.Game) []Date {
-	temp := make(map[string][]*repository.Game)
+func groupByDate(games []*models.Game) []Date {
+	temp := make(map[string][]*models.Game)
 	for _, game := range games {
 		temp[game.Date] = append(temp[game.Date], game)
 	}
@@ -120,8 +120,8 @@ func groupByDate(games []*repository.Game) []Date {
 	return result
 }
 
-func groupByTeam(games []*repository.Game) map[string][]*repository.Game {
-	result := make(map[string][]*repository.Game)
+func groupByTeam(games []*models.Game) map[string][]*models.Game {
+	result := make(map[string][]*models.Game)
 	for _, game := range games {
 		result[game.Away] = append(result[game.Away], game)
 		result[game.Home] = append(result[game.Home], game)

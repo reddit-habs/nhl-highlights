@@ -1,0 +1,4 @@
+no-tests = true
+
+[sqlite3]
+dbname = "games.db"

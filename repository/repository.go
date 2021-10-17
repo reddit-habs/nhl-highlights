@@ -1,11 +1,15 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
-	"fmt"
+	"errors"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/sbstp/nhl-highlights/models"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
 const schema = `
@@ -40,99 +44,53 @@ func New(path string) (*Repository, error) {
 	}, nil
 }
 
-func (r *Repository) scanGames(rows *sql.Rows) ([]*Game, error) {
-	defer rows.Close()
-	games := make([]*Game, 0)
-
-	for rows.Next() {
-		game := &Game{}
-		err := rows.Scan(
-			&game.GameID,
-			&game.Date,
-			&game.Type,
-			&game.Away,
-			&game.Home,
-			&game.Season,
-			&game.Recap,
-			&game.Extended,
-		)
-		if err != nil {
-			return nil, err
+func (r *Repository) GetGame(gameID int64) (*models.Game, error) {
+	game, err := models.Games(models.GameWhere.GameID.EQ(gameID)).One(context.TODO(), r.db)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
 		}
-		games = append(games, game)
-	}
-	return games, nil
-}
-
-func (r *Repository) GetGame(gameID int64) (*Game, error) {
-	rows, err := r.db.Query("SELECT game_id, date, type, away, home, season, recap, extended FROM games WHERE game_id = ?", gameID)
-	if err != nil {
 		return nil, err
 	}
-
-	games, err := r.scanGames(rows)
-	if err != nil {
-		return nil, err
-	}
-
-	var game *Game
-	if len(games) > 0 {
-		game = games[0]
-	}
-
-	return game, nil
+	return game, err
 }
 
-func (r *Repository) GetGamesMissingContent(incremental bool) ([]*Game, error) {
-	args := []interface{}{}
-	query := "SELECT game_id, date, type, away, home, season, recap, extended FROM games WHERE (recap IS NULL or extended IS NULL)"
+func (r *Repository) GetGamesMissingContent(incremental bool) ([]*models.Game, error) {
+	mods := []qm.QueryMod{
+		qm.Expr(
+			models.GameWhere.Recap.IsNull(),
+			qm.Or2(models.GameWhere.Extended.IsNull()),
+		),
+	}
 	if incremental {
-		query += " AND date >= ?"
 		cutoff := time.Now().AddDate(0, 0, -3).Format("2006-01-02")
-		fmt.Println(cutoff)
-		args = append(args, cutoff)
+		mods = append(mods, models.GameWhere.Date.GTE(cutoff))
 	}
-	rows, err := r.db.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
-
-	return r.scanGames(rows)
+	return models.Games().All(context.TODO(), r.db)
 }
 
-func (r *Repository) GetGames() ([]*Game, error) {
-	rows, err := r.db.Query("SELECT game_id, date, type, away, home, season, recap, extended FROM games ORDER BY date DESC")
-	if err != nil {
-		return nil, err
-	}
-
-	return r.scanGames(rows)
+func (r *Repository) GetGames() ([]*models.Game, error) {
+	return models.Games().All(context.TODO(), r.db)
 }
 
-func (r *Repository) UpsertGame(game *Game) error {
-	result, err := r.db.Exec(
-		`INSERT INTO games (game_id, date, type, away, home, season, recap, extended)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		 ON CONFLICT(game_id) DO UPDATE SET
-			date=excluded.date,
-			type=excluded.type,
-			away=excluded.away,
-			home=excluded.home,
-			season=excluded.season,
-			recap=excluded.recap,
-			extended=excluded.extended`,
-		game.GameID, game.Date, game.Type, game.Away, game.Home,
-		game.Season, game.Recap, game.Extended,
-	)
+func (r *Repository) UpsertGame(game *models.Game) error {
+	tx, err := r.db.Begin()
 	if err != nil {
 		return err
 	}
-	aff, err := result.RowsAffected()
-	if err != nil {
+	defer tx.Rollback()
+
+	// sqlboiler does not support upsert for sqlite3 yet.
+	// So we try to insert and in case of error we try to update.
+	if err := game.Insert(context.TODO(), tx, boil.Infer()); err != nil {
+		if _, err = game.Update(context.TODO(), tx, boil.Infer()); err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
 		return err
 	}
-	if aff != 1 {
-		return fmt.Errorf("no rows modified")
-	}
+
 	return nil
 }

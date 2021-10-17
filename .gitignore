@@ -1,2 +1,3 @@
 *.db
+/build/
 /output/

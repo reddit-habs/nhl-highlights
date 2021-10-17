@@ -5,4 +5,4 @@ build:
 .PHONY: boiler
 boiler:
 	rm -rf models
-	sqlboiler sqlite3
+	sqlboiler sqlite3 --no-hooks --no-tests

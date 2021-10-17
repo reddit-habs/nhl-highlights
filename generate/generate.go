@@ -7,6 +7,7 @@ import (
 	"path"
 	"sort"
 	"text/template"
+	"time"
 
 	"github.com/sbstp/nhl-highlights/models"
 	"github.com/sbstp/nhl-highlights/nhlapi"
@@ -29,12 +30,7 @@ func Pages(outputDir string, games []*models.Game) error {
 	for season, games := range bySeason {
 		outputPath := path.Join(outputDir, season, "index.html")
 
-		err := generateFile(outputPath, &Root{
-			Season:  season,
-			Seasons: seasons,
-			Teams:   nhlapi.Teams,
-			Dates:   groupByDate(games),
-		})
+		err := generateFile(outputPath, NewRoot(season, seasons, games))
 		if err != nil {
 			return err
 		}
@@ -43,12 +39,7 @@ func Pages(outputDir string, games []*models.Game) error {
 		for team, games := range teams {
 			outputPath := path.Join(outputDir, season, team+".html")
 
-			err := generateFile(outputPath, &Root{
-				Season:  season,
-				Seasons: seasons,
-				Teams:   nhlapi.Teams,
-				Dates:   groupByDate(games),
-			})
+			err := generateFile(outputPath, NewRoot(season, seasons, games))
 			if err != nil {
 				return err
 			}
@@ -77,11 +68,22 @@ func generateFile(outputPath string, root *Root) error {
 	return nil
 }
 
+func NewRoot(season string, seasons []string, games []*models.Game) *Root {
+	return &Root{
+		Season:         season,
+		Seasons:        seasons,
+		Teams:          nhlapi.Teams,
+		Dates:          groupByDate(games),
+		GenerationDate: time.Now().Local().Format("2006-01-02 03:04:05"),
+	}
+}
+
 type Root struct {
-	Season  string
-	Seasons []string
-	Teams   []*nhlapi.Team
-	Dates   []Date
+	Season         string
+	Seasons        []string
+	Teams          []*nhlapi.Team
+	Dates          []Date
+	GenerationDate string
 }
 
 type Date struct {

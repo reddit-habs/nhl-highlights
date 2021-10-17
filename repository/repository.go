@@ -66,7 +66,7 @@ func (r *Repository) GetGamesMissingContent(incremental bool) ([]*models.Game, e
 		cutoff := time.Now().AddDate(0, 0, -3).Format("2006-01-02")
 		mods = append(mods, models.GameWhere.Date.GTE(cutoff))
 	}
-	return models.Games().All(context.TODO(), r.db)
+	return models.Games(mods...).All(context.TODO(), r.db)
 }
 
 func (r *Repository) GetGames() ([]*models.Game, error) {

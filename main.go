@@ -74,6 +74,10 @@ func realMain() error {
 	}
 
 	missing, err := repo.GetGamesMissingContent(incremental)
+	if err != nil {
+		return err
+	}
+
 	for _, game := range missing {
 		log.Printf("Getting content for game %d, date=%s", game.GameID, game.Date)
 		content, err := client.Content(game.GameID)

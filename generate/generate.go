@@ -29,17 +29,17 @@ func Pages(outputDir string, games []*models.Game) error {
 
 	for season, games := range bySeason {
 		outputPath := path.Join(outputDir, season, "index.html")
+		teams := teamsForSeason(games)
 
-		err := generateFile(outputPath, NewRoot(season, seasons, games))
+		err := generateFile(outputPath, NewRoot(season, seasons, games, teams))
 		if err != nil {
 			return err
 		}
 
-		teams := groupByTeam(games)
-		for team, games := range teams {
+		for team, games := range groupByTeam(games) {
 			outputPath := path.Join(outputDir, season, team+".html")
 
-			err := generateFile(outputPath, NewRoot(season, seasons, games))
+			err := generateFile(outputPath, NewRoot(season, seasons, games, teams))
 			if err != nil {
 				return err
 			}
@@ -68,11 +68,11 @@ func generateFile(outputPath string, root *Root) error {
 	return nil
 }
 
-func NewRoot(season string, seasons []string, games []*models.Game) *Root {
+func NewRoot(season string, seasons []string, games []*models.Game, teams []*nhlapi.Team) *Root {
 	return &Root{
 		Season:         season,
 		Seasons:        seasons,
-		Teams:          nhlapi.Teams,
+		Teams:          teams,
 		Dates:          groupByDate(games),
 		GenerationDate: time.Now().Local().Format("2006-01-02 03:04:05"),
 	}
@@ -129,4 +129,20 @@ func groupByTeam(games []*models.Game) map[string][]*models.Game {
 		result[game.Home] = append(result[game.Home], game)
 	}
 	return result
+}
+
+func teamsForSeason(games []*models.Game) []*nhlapi.Team {
+	temp := make(map[string]struct{})
+	for _, game := range games {
+		temp[game.Away] = struct{}{}
+		temp[game.Home] = struct{}{}
+	}
+	teams := make([]*nhlapi.Team, 0, len(temp))
+	for team := range temp {
+		teams = append(teams, nhlapi.TeamsByAbbrev[team])
+	}
+	sort.Slice(teams, func(i, j int) bool {
+		return teams[i].Abbrev < teams[j].Abbrev
+	})
+	return teams
 }

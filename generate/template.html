@@ -15,7 +15,8 @@
     </div>
     <hr />
     <div>
-        {{range $season := .Seasons}}
+        {{range $idx, $season := .Seasons}}
+        {{if gt $idx 0}}|{{end}}
         <a href="../{{$season}}/index.html">{{$season}}</a>
         {{end}}
     </div>

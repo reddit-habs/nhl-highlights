@@ -18,7 +18,8 @@ type Team struct {
 var rawTeamsJSON []byte
 
 var Teams []*Team
-var TeamsByID map[int32]*Team
+var TeamsByID map[int32]*Team = make(map[int32]*Team)
+var TeamsByAbbrev map[string]*Team = make(map[string]*Team)
 
 func init() {
 	type teamsRoot struct {
@@ -34,9 +35,9 @@ func init() {
 	}
 
 	Teams = root.Teams
-	TeamsByID = make(map[int32]*Team)
 	for _, team := range Teams {
 		TeamsByID[team.ID] = team
+		TeamsByAbbrev[team.Abbrev] = team
 	}
 
 	sort.Slice(Teams, func(i, j int) bool {

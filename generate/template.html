@@ -41,14 +41,14 @@
                 <td>{{$game.Type}}</td>
                 <td>
                     {{if $game.Recap.Valid}}
-                    <a href="{{$game.Recap}}" target="_blank">link</a>
+                    <a href="{{$game.Recap.String}}" target="_blank">link</a>
                     {{else}}
                     -
                     {{end}}
                 </td>
                 <td>
                     {{if $game.Extended.Valid}}
-                    <a href="{{$game.Extended}}" target="_blank">link</a>
+                    <a href="{{$game.Extended.String}}" target="_blank">link</a>
                     {{else}}
                     -
                     {{end}}

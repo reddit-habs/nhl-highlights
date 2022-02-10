@@ -53,15 +53,18 @@ func realMain() error {
 	}
 
 	for _, date := range schedule.Dates {
+		log.Printf("Date: %s", date.Date)
 		for _, game := range date.Games {
+			log.Printf("Game: %s at %s", game.Teams.Away.TeamID.Name, game.Teams.Home.TeamID.Name)
 			if game.Type == "A" || game.Type == "WA" {
 				continue
 			}
-			exists, err := repo.GetGame(game.GameID)
+			exists, err := repo.GetGame(game.GameID, date.Date)
 			if err != nil {
 				return err
 			}
 			if exists == nil {
+				log.Printf("Adding game %d on date %s", game.GameID, date.Date)
 				g := gameFromSchedule(date.Date, game)
 				if g == nil {
 					continue

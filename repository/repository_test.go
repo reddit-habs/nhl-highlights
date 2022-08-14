@@ -29,7 +29,8 @@ func TestGames(t *testing.T) {
 	require.Equal(t, 1, len(games))
 
 	// Select
-	game, err := r.GetGame(games[0].GameID)
+	game, err := r.GetGame(games[0].GameID, "2021-06-29")
+	require.NoError(t, err)
 	require.Equal(t, games[0], game)
 
 	// Update
@@ -47,7 +48,7 @@ func TestGames(t *testing.T) {
 	require.NoError(t, err)
 
 	// Select
-	game2, err := r.GetGame(games[0].GameID)
+	game2, err := r.GetGame(games[0].GameID, "2022-06-29")
 	require.NoError(t, err)
 	require.Equal(t, updated, game2)
 }

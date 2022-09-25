@@ -3,6 +3,7 @@ package generate
 import (
 	"bufio"
 	_ "embed"
+	"log"
 	"os"
 	"path"
 	"sort"
@@ -46,7 +47,9 @@ func Pages(outputDir string, games []*models.Game) error {
 		}
 	}
 
-	os.Symlink(path.Join(seasons[0]), path.Join(outputDir, "current"))
+	if err := os.Symlink(path.Join(seasons[0]), path.Join(outputDir, "current")); err != nil {
+		log.Printf("Error symlinking: %v", err)
+	}
 
 	return nil
 }

@@ -47,7 +47,14 @@ func Pages(outputDir string, games []*models.Game) error {
 		}
 	}
 
-	if err := os.Symlink(path.Join(seasons[0]), path.Join(outputDir, "current")); err != nil {
+	// Remove "current" symlink if it already exists.
+	// os.Symlink won't overwrite it.
+	currentPath := path.Join(outputDir, "current")
+	if err := os.Remove(currentPath); err != nil {
+		log.Printf("Could not remove current: %v", err)
+	}
+
+	if err := os.Symlink(path.Join(seasons[0]), currentPath); err != nil {
 		log.Printf("Error symlinking: %v", err)
 	}
 

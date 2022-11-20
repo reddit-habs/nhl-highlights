@@ -46,7 +46,12 @@ func realMain() error {
 	if err != nil {
 		return err
 	}
+
 	client := nhlapi.NewClient()
+	teamsCache, err := nhlapi.NewTeamsCache(client)
+	if err != nil {
+		return err
+	}
 
 	schedule, err := client.Schedule(startDate, endDate)
 	if err != nil {
@@ -66,7 +71,7 @@ func realMain() error {
 			}
 			if exists == nil {
 				log.Printf("Adding game %d on date %s", game.GameID, date.Date)
-				g := gameFromSchedule(date.Date, game)
+				g := gameFromSchedule(teamsCache, date.Date, game)
 				if g == nil {
 					continue
 				}
@@ -106,7 +111,7 @@ func realMain() error {
 		return err
 	}
 
-	if err := generate.Pages(outputDir, games); err != nil {
+	if err := generate.Pages(teamsCache, outputDir, games); err != nil {
 		return err
 	}
 
@@ -124,12 +129,12 @@ func isGameRelavant(game *nhlapi.ScheduleGame) bool {
 	}
 }
 
-func gameFromSchedule(date string, game *nhlapi.ScheduleGame) *models.Game {
-	away, ok := nhlapi.TeamsByID[game.Teams.Away.TeamID.ID]
+func gameFromSchedule(teamsCache *nhlapi.TeamsCache, date string, game *nhlapi.ScheduleGame) *models.Game {
+	away, ok := teamsCache.GetByID(game.Teams.Away.TeamID.ID)
 	if !ok {
 		return nil
 	}
-	home, ok := nhlapi.TeamsByID[game.Teams.Home.TeamID.ID]
+	home, ok := teamsCache.GetByID(game.Teams.Home.TeamID.ID)
 	if !ok {
 		return nil
 	}

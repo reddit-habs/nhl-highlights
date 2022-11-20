@@ -19,7 +19,7 @@ var tplSource string
 
 var tpl = template.Must(template.New("template.html").Parse(tplSource))
 
-func Pages(outputDir string, games []*models.Game) error {
+func Pages(teamsCache *nhlapi.TeamsCache, outputDir string, games []*models.Game) error {
 	bySeason := groupBySeason(games)
 
 	seasons := make([]string, 0)
@@ -30,7 +30,7 @@ func Pages(outputDir string, games []*models.Game) error {
 
 	for season, games := range bySeason {
 		outputPath := path.Join(outputDir, season, "index.html")
-		teams := teamsForSeason(games)
+		teams := teamsForSeason(teamsCache, games)
 
 		err := generateFile(outputPath, NewRoot(season, seasons, games, teams))
 		if err != nil {
@@ -143,7 +143,7 @@ func groupByTeam(games []*models.Game) map[string][]*models.Game {
 	return result
 }
 
-func teamsForSeason(games []*models.Game) []*nhlapi.Team {
+func teamsForSeason(teamsCache *nhlapi.TeamsCache, games []*models.Game) []*nhlapi.Team {
 	temp := make(map[string]struct{})
 	for _, game := range games {
 		temp[game.Away] = struct{}{}
@@ -151,7 +151,7 @@ func teamsForSeason(games []*models.Game) []*nhlapi.Team {
 	}
 	teams := make([]*nhlapi.Team, 0, len(temp))
 	for team := range temp {
-		teams = append(teams, nhlapi.TeamsByAbbrev[team])
+		teams = append(teams, teamsCache.GetByAbbrev(team))
 	}
 	sort.Slice(teams, func(i, j int) bool {
 		return teams[i].Abbrev < teams[j].Abbrev

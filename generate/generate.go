@@ -3,11 +3,11 @@ package generate
 import (
 	"bufio"
 	_ "embed"
+	"html/template"
 	"log"
 	"os"
 	"path"
 	"sort"
-	"text/template"
 	"time"
 
 	"github.com/sbstp/nhl-highlights/models"

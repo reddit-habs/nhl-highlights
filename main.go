@@ -33,6 +33,7 @@ func main() {
 
 	if incremental && (len(startDate) > 0 || len(endDate) > 0) {
 		fmt.Fprintln(os.Stderr, "-start-date and -end-date have no meaning in incremental mode")
+		return
 	}
 
 	if err := realMain(); err != nil {

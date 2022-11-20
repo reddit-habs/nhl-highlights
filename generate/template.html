@@ -42,14 +42,14 @@
                 <td>{{$game.Type}}</td>
                 <td>
                     {{if $game.Recap.Valid}}
-                    <a href="{{$game.Recap.String}}" target="_blank">link</a>
+                    <a href="{{$game.Recap.String}}" target="_blank" rel="noreferrer">link</a>
                     {{else}}
                     -
                     {{end}}
                 </td>
                 <td>
                     {{if $game.Extended.Valid}}
-                    <a href="{{$game.Extended.String}}" target="_blank">link</a>
+                    <a href="{{$game.Extended.String}}" target="_blank" rel="noreferrer">link</a>
                     {{else}}
                     -
                     {{end}}
@@ -62,7 +62,7 @@
     {{end}}
     <div>
         Generated on: {{.GenerationDate}}, Source code
-        <a href="https://github.com/sbstp/nhl-highlights" target="_blank">here</a>.
+        <a href="https://github.com/sbstp/nhl-highlights" target="_blank" rel="noreferrer">here</a>.
     </div>
 </body>
 

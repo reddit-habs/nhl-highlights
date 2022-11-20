@@ -56,7 +56,7 @@ func realMain() error {
 		log.Printf("Date: %s", date.Date)
 		for _, game := range date.Games {
 			log.Printf("Game: %s at %s", game.Teams.Away.TeamID.Name, game.Teams.Home.TeamID.Name)
-			if game.Type == "A" || game.Type == "WA" {
+			if !isGameRelavant(game) {
 				continue
 			}
 			exists, err := repo.GetGame(game.GameID, date.Date)
@@ -110,6 +110,17 @@ func realMain() error {
 	}
 
 	return nil
+}
+
+// isGameRelevant checks if the game is relevant for what this program is doing.
+// We only care about preseason, regular and playoffs games.
+func isGameRelavant(game *nhlapi.ScheduleGame) bool {
+	switch game.Type {
+	case nhlapi.GameTypePreseason, nhlapi.GameTypeRegular, nhlapi.GameTypePlayoffs:
+		return true
+	default:
+		return false
+	}
 }
 
 func gameFromSchedule(date string, game *nhlapi.ScheduleGame) *models.Game {

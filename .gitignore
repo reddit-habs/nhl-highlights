@@ -1,3 +1,4 @@
 *.db
-/build/
-/output/
+/go/build/
+/go/output/
+/rust/**/target/

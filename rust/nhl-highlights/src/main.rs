@@ -1,4 +1,5 @@
 mod nhlapi;
+mod repo;
 
 fn main() -> anyhow::Result<()> {
     let client = nhlapi::Client::new();

@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-pub const GAME_TYPE_PRESEASON: &'static str = "PR";
-pub const GAME_TYPE_REGULAR: &'static str = "R";
-pub const GAME_TYPE_PLAYOFFS: &'static str = "P";
+pub const GAME_TYPE_PRESEASON: &str = "PR";
+pub const GAME_TYPE_REGULAR: &str = "R";
+pub const GAME_TYPE_PLAYOFFS: &str = "P";
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct ScheduleResponse {

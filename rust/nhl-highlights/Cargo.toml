@@ -7,12 +7,23 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.66"
+fallible-iterator = "0.2.0"
 
 [dependencies.attohttpc]
 version = "0.24.0"
 default-features = false
 features = ["compress", "json", "tls-rustls-native-roots"]
 
+[dependencies.rusqlite]
+version = "0.28.0"
+features = ["bundled"]
+
 [dependencies.serde]
 version = "1.0.147"
 features = ["derive"]
+
+[profile.release]
+opt-level = "s"
+strip = true
+lto = true
+codegen-units = 1

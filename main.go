@@ -95,10 +95,14 @@ func realMain() error {
 		}
 		for _, epg := range content.Media.EPG {
 			if epg.Title == "Recap" && len(epg.Items) > 0 {
-				game.Recap = null.StringFrom(getBestMp4Playback(epg.Items[0].Playbacks))
+				if url := getBestMp4Playback(epg.Items[0].Playbacks); len(url) > 0 {
+					game.Recap = null.StringFrom(url)
+				}
 			}
 			if epg.Title == "Extended Highlights" && len(epg.Items) > 0 {
-				game.Extended = null.StringFrom(getBestMp4Playback(epg.Items[0].Playbacks))
+				if url := getBestMp4Playback(epg.Items[0].Playbacks); len(url) > 0 {
+					game.Extended = null.StringFrom(url)
+				}
 			}
 		}
 		if err := repo.UpsertGame(game); err != nil {
@@ -157,5 +161,8 @@ func getBestMp4Playback(playbacks []*nhlapi.ContentPlayback) string {
 			links = append(links, pb.URL)
 		}
 	}
-	return links[len(links)-1]
+	if len(links) > 0 {
+		return links[len(links)-1]
+	}
+	return ""
 }

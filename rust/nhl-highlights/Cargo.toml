@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.66"
 fallible-iterator = "0.2.0"
+log = "0.4.17"
+simple_logger = "4.0.0"
 
 [dependencies.attohttpc]
 version = "0.24.0"

@@ -1,14 +1,16 @@
 use fallible_iterator::FallibleIterator;
+use rusqlite::OptionalExtension;
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Game {
-    game_id: i64,
-    date: String,
-    type_: String,
-    away: String,
-    home: String,
-    season: String,
-    recap: Option<String>,
-    extended: Option<String>,
+    pub game_id: i64,
+    pub date: String,
+    pub type_: String,
+    pub away: String,
+    pub home: String,
+    pub season: String,
+    pub recap: Option<String>,
+    pub extended: Option<String>,
 }
 
 impl<'a> TryFrom<&'a rusqlite::Row<'a>> for Game {
@@ -33,17 +35,17 @@ pub struct DB {
 }
 
 impl DB {
-    pub fn new() -> anyhow::Result<DB> {
-        let handle = rusqlite::Connection::open("games.db")?;
+    pub fn new(path: &str) -> anyhow::Result<DB> {
+        let handle = rusqlite::Connection::open(path)?;
         handle.execute_batch(include_str!("schema.sql"))?;
         Ok(DB { handle })
     }
 
-    pub fn get_game(&self, game_id: i64, date: &str) -> anyhow::Result<Game> {
+    pub fn get_game(&self, game_id: i64, date: &str) -> anyhow::Result<Option<Game>> {
         let mut stmt = self.handle.prepare(
             "SELECT game_id, date, type, away, home, season, recap, extended FROM games WHERE game_id = ? AND date = ?",
         )?;
-        Ok(stmt.query_row((game_id, date), |r| r.try_into())?)
+        Ok(stmt.query_row((game_id, date), |r| r.try_into()).optional()?)
     }
 
     pub fn get_games(&self) -> anyhow::Result<Vec<Game>> {
@@ -91,19 +93,28 @@ impl DB {
     }
 }
 
-/*
-// Game is an object representing the database table.
-type Game struct {
-    GameID   int64       `boil:"game_id" json:"game_id" toml:"game_id" yaml:"game_id"`
-    Date     string      `boil:"date" json:"date" toml:"date" yaml:"date"`
-    Type     string      `boil:"type" json:"type" toml:"type" yaml:"type"`
-    Away     string      `boil:"away" json:"away" toml:"away" yaml:"away"`
-    Home     string      `boil:"home" json:"home" toml:"home" yaml:"home"`
-    Season   string      `boil:"season" json:"season" toml:"season" yaml:"season"`
-    Recap    null.String `boil:"recap" json:"recap,omitempty" toml:"recap" yaml:"recap,omitempty"`
-    Extended null.String `boil:"extended" json:"extended,omitempty" toml:"extended" yaml:"extended,omitempty"`
+#[test]
+fn test_game_cru() -> anyhow::Result<()> {
+    let db = DB::new(":memory:")?;
+    let g1 = &Game {
+        game_id: 123,
+        date: "2022-11-10".into(),
+        type_: "PR".into(),
+        away: "MTL".into(),
+        home: "TOR".into(),
+        season: "20212022".into(),
+        recap: None,
+        extended: None,
+    };
 
-    R *gameR `boil:"-" json:"-" toml:"-" yaml:"-"`
-    L gameL  `boil:"-" json:"-" toml:"-" yaml:"-"`
+    db.upsert_game(g1)?;
+    let mut g2 = db.get_game(123, "2022-11-10")?.unwrap();
+    assert_eq!(g1, &g2);
+
+    g2.recap = Some("hello".into());
+    db.upsert_game(&g2)?;
+    let g3 = db.get_game(123, "2022-11-10")?.unwrap();
+    assert_eq!(g2, g3);
+
+    Ok(())
 }
- */

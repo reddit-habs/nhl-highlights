@@ -64,6 +64,10 @@ func New(path string) (*Repository, error) {
 	}, nil
 }
 
+func (r *Repository) Close() error {
+	return r.db.Close()
+}
+
 func (r *Repository) GetGame(gameID int64, date string) (*models.Game, error) {
 	game, err := models.Games(models.GameWhere.GameID.EQ(gameID), models.GameWhere.Date.EQ(date)).One(context.TODO(), r.db)
 	if err != nil {

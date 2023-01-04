@@ -80,12 +80,8 @@ func (r *Repository) UpsertGame(game *models.Game) error {
 	}
 	defer tx.Rollback()
 
-	// sqlboiler does not support upsert for sqlite3 yet.
-	// So we try to insert and in case of error we try to update.
-	if err := game.Insert(context.TODO(), tx, boil.Infer()); err != nil {
-		if _, err = game.Update(context.TODO(), tx, boil.Infer()); err != nil {
-			return err
-		}
+	if err := game.Upsert(context.TODO(), tx, true, []string{models.GameColumns.GameID}, boil.Infer(), boil.Infer()); err != nil {
+		return err
 	}
 
 	if err := tx.Commit(); err != nil {

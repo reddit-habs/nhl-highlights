@@ -6,3 +6,7 @@ build:
 boiler:
 	rm -rf models
 	sqlboiler sqlite3 --no-hooks --no-tests
+
+install-boiler:
+	go install github.com/volatiletech/sqlboiler/v4@latest
+	go install github.com/volatiletech/sqlboiler/v4/drivers/sqlboiler-sqlite3@latest

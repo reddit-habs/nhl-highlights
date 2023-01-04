@@ -12,6 +12,10 @@ import (
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
 
+const pragmas = `
+PRAGMA foreign_keys = ON;
+`
+
 const schema = `
 CREATE TABLE IF NOT EXISTS games (
 	game_id INTEGER PRIMARY KEY NOT NULL,
@@ -23,6 +27,18 @@ CREATE TABLE IF NOT EXISTS games (
 	recap TEXT,
 	extended TEXT
 );
+
+CREATE TABLE IF NOT EXISTS highlights (
+	id INTEGER NOT NULL,
+	game_id INTEGER NOT NULL,
+	media_url TEXT NOT NULL,
+	event_id INT,
+	title TEXT,
+	blurb TEXT,
+	description TEXT,
+	PRIMARY KEY (id, game_id),
+	FOREIGN KEY(game_id) REFERENCES games(game_id)
+);
 `
 
 type Repository struct {
@@ -32,6 +48,10 @@ type Repository struct {
 func New(path string) (*Repository, error) {
 	db, err := sql.Open("sqlite3", "file:"+path)
 	if err != nil {
+		return nil, err
+	}
+
+	if _, err := db.Exec(pragmas); err != nil {
 		return nil, err
 	}
 
@@ -70,7 +90,7 @@ func (r *Repository) GetGamesMissingContent(incremental bool) ([]*models.Game, e
 }
 
 func (r *Repository) GetGames() ([]*models.Game, error) {
-	return models.Games().All(context.TODO(), r.db)
+	return models.Games(qm.Load(models.GameRels.Highlights)).All(context.TODO(), r.db)
 }
 
 func (r *Repository) UpsertGame(game *models.Game) error {
@@ -82,6 +102,26 @@ func (r *Repository) UpsertGame(game *models.Game) error {
 
 	if err := game.Upsert(context.TODO(), tx, true, []string{models.GameColumns.GameID}, boil.Infer(), boil.Infer()); err != nil {
 		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Repository) UpsertHighlights(highlights []*models.Highlight) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for _, h := range highlights {
+		if err := h.Upsert(context.TODO(), tx, true, []string{models.HighlightColumns.ID, models.HighlightColumns.GameID}, boil.Infer(), boil.Infer()); err != nil {
+			return err
+		}
 	}
 
 	if err := tx.Commit(); err != nil {

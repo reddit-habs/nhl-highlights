@@ -24,37 +24,52 @@ import (
 
 // Highlight is an object representing the database table.
 type Highlight struct {
-	ID       int64      `boil:"id" json:"id" toml:"id" yaml:"id"`
-	GameID   int64      `boil:"game_id" json:"game_id" toml:"game_id" yaml:"game_id"`
-	MediaURL string     `boil:"media_url" json:"media_url" toml:"media_url" yaml:"media_url"`
-	EventID  null.Int64 `boil:"event_id" json:"event_id,omitempty" toml:"event_id" yaml:"event_id,omitempty"`
+	ID          int64       `boil:"id" json:"id" toml:"id" yaml:"id"`
+	GameID      int64       `boil:"game_id" json:"game_id" toml:"game_id" yaml:"game_id"`
+	MediaURL    string      `boil:"media_url" json:"media_url" toml:"media_url" yaml:"media_url"`
+	EventID     null.Int64  `boil:"event_id" json:"event_id,omitempty" toml:"event_id" yaml:"event_id,omitempty"`
+	Title       null.String `boil:"title" json:"title,omitempty" toml:"title" yaml:"title,omitempty"`
+	Blurb       null.String `boil:"blurb" json:"blurb,omitempty" toml:"blurb" yaml:"blurb,omitempty"`
+	Description null.String `boil:"description" json:"description,omitempty" toml:"description" yaml:"description,omitempty"`
 
 	R *highlightR `boil:"-" json:"-" toml:"-" yaml:"-"`
 	L highlightL  `boil:"-" json:"-" toml:"-" yaml:"-"`
 }
 
 var HighlightColumns = struct {
-	ID       string
-	GameID   string
-	MediaURL string
-	EventID  string
+	ID          string
+	GameID      string
+	MediaURL    string
+	EventID     string
+	Title       string
+	Blurb       string
+	Description string
 }{
-	ID:       "id",
-	GameID:   "game_id",
-	MediaURL: "media_url",
-	EventID:  "event_id",
+	ID:          "id",
+	GameID:      "game_id",
+	MediaURL:    "media_url",
+	EventID:     "event_id",
+	Title:       "title",
+	Blurb:       "blurb",
+	Description: "description",
 }
 
 var HighlightTableColumns = struct {
-	ID       string
-	GameID   string
-	MediaURL string
-	EventID  string
+	ID          string
+	GameID      string
+	MediaURL    string
+	EventID     string
+	Title       string
+	Blurb       string
+	Description string
 }{
-	ID:       "highlights.id",
-	GameID:   "highlights.game_id",
-	MediaURL: "highlights.media_url",
-	EventID:  "highlights.event_id",
+	ID:          "highlights.id",
+	GameID:      "highlights.game_id",
+	MediaURL:    "highlights.media_url",
+	EventID:     "highlights.event_id",
+	Title:       "highlights.title",
+	Blurb:       "highlights.blurb",
+	Description: "highlights.description",
 }
 
 // Generated where
@@ -98,15 +113,21 @@ func (w whereHelpernull_Int64) IsNull() qm.QueryMod    { return qmhelper.WhereIs
 func (w whereHelpernull_Int64) IsNotNull() qm.QueryMod { return qmhelper.WhereIsNotNull(w.field) }
 
 var HighlightWhere = struct {
-	ID       whereHelperint64
-	GameID   whereHelperint64
-	MediaURL whereHelperstring
-	EventID  whereHelpernull_Int64
+	ID          whereHelperint64
+	GameID      whereHelperint64
+	MediaURL    whereHelperstring
+	EventID     whereHelpernull_Int64
+	Title       whereHelpernull_String
+	Blurb       whereHelpernull_String
+	Description whereHelpernull_String
 }{
-	ID:       whereHelperint64{field: "\"highlights\".\"id\""},
-	GameID:   whereHelperint64{field: "\"highlights\".\"game_id\""},
-	MediaURL: whereHelperstring{field: "\"highlights\".\"media_url\""},
-	EventID:  whereHelpernull_Int64{field: "\"highlights\".\"event_id\""},
+	ID:          whereHelperint64{field: "\"highlights\".\"id\""},
+	GameID:      whereHelperint64{field: "\"highlights\".\"game_id\""},
+	MediaURL:    whereHelperstring{field: "\"highlights\".\"media_url\""},
+	EventID:     whereHelpernull_Int64{field: "\"highlights\".\"event_id\""},
+	Title:       whereHelpernull_String{field: "\"highlights\".\"title\""},
+	Blurb:       whereHelpernull_String{field: "\"highlights\".\"blurb\""},
+	Description: whereHelpernull_String{field: "\"highlights\".\"description\""},
 }
 
 // HighlightRels is where relationship names are stored.
@@ -137,9 +158,9 @@ func (r *highlightR) GetGame() *Game {
 type highlightL struct{}
 
 var (
-	highlightAllColumns            = []string{"id", "game_id", "media_url", "event_id"}
+	highlightAllColumns            = []string{"id", "game_id", "media_url", "event_id", "title", "blurb", "description"}
 	highlightColumnsWithoutDefault = []string{"game_id", "media_url"}
-	highlightColumnsWithDefault    = []string{"id", "event_id"}
+	highlightColumnsWithDefault    = []string{"id", "event_id", "title", "blurb", "description"}
 	highlightPrimaryKeyColumns     = []string{"id", "game_id"}
 	highlightGeneratedColumns      = []string{"id"}
 )

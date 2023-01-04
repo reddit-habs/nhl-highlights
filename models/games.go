@@ -185,15 +185,26 @@ var GameWhere = struct {
 
 // GameRels is where relationship names are stored.
 var GameRels = struct {
-}{}
+	Highlights string
+}{
+	Highlights: "Highlights",
+}
 
 // gameR is where relationships are stored.
 type gameR struct {
+	Highlights HighlightSlice `boil:"Highlights" json:"Highlights" toml:"Highlights" yaml:"Highlights"`
 }
 
 // NewStruct creates a new relationship struct
 func (*gameR) NewStruct() *gameR {
 	return &gameR{}
+}
+
+func (r *gameR) GetHighlights() HighlightSlice {
+	if r == nil {
+		return nil
+	}
+	return r.Highlights
 }
 
 // gameL is where Load methods for each relationship are stored.
@@ -296,6 +307,180 @@ func (q gameQuery) Exists(ctx context.Context, exec boil.ContextExecutor) (bool,
 	}
 
 	return count > 0, nil
+}
+
+// Highlights retrieves all the highlight's Highlights with an executor.
+func (o *Game) Highlights(mods ...qm.QueryMod) highlightQuery {
+	var queryMods []qm.QueryMod
+	if len(mods) != 0 {
+		queryMods = append(queryMods, mods...)
+	}
+
+	queryMods = append(queryMods,
+		qm.Where("\"highlights\".\"game_id\"=?", o.GameID),
+	)
+
+	return Highlights(queryMods...)
+}
+
+// LoadHighlights allows an eager lookup of values, cached into the
+// loaded structs of the objects. This is for a 1-M or N-M relationship.
+func (gameL) LoadHighlights(ctx context.Context, e boil.ContextExecutor, singular bool, maybeGame interface{}, mods queries.Applicator) error {
+	var slice []*Game
+	var object *Game
+
+	if singular {
+		var ok bool
+		object, ok = maybeGame.(*Game)
+		if !ok {
+			object = new(Game)
+			ok = queries.SetFromEmbeddedStruct(&object, &maybeGame)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", object, maybeGame))
+			}
+		}
+	} else {
+		s, ok := maybeGame.(*[]*Game)
+		if ok {
+			slice = *s
+		} else {
+			ok = queries.SetFromEmbeddedStruct(&slice, maybeGame)
+			if !ok {
+				return errors.New(fmt.Sprintf("failed to set %T from embedded struct %T", slice, maybeGame))
+			}
+		}
+	}
+
+	args := make([]interface{}, 0, 1)
+	if singular {
+		if object.R == nil {
+			object.R = &gameR{}
+		}
+		args = append(args, object.GameID)
+	} else {
+	Outer:
+		for _, obj := range slice {
+			if obj.R == nil {
+				obj.R = &gameR{}
+			}
+
+			for _, a := range args {
+				if a == obj.GameID {
+					continue Outer
+				}
+			}
+
+			args = append(args, obj.GameID)
+		}
+	}
+
+	if len(args) == 0 {
+		return nil
+	}
+
+	query := NewQuery(
+		qm.From(`highlights`),
+		qm.WhereIn(`highlights.game_id in ?`, args...),
+	)
+	if mods != nil {
+		mods.Apply(query)
+	}
+
+	results, err := query.QueryContext(ctx, e)
+	if err != nil {
+		return errors.Wrap(err, "failed to eager load highlights")
+	}
+
+	var resultSlice []*Highlight
+	if err = queries.Bind(results, &resultSlice); err != nil {
+		return errors.Wrap(err, "failed to bind eager loaded slice highlights")
+	}
+
+	if err = results.Close(); err != nil {
+		return errors.Wrap(err, "failed to close results in eager load on highlights")
+	}
+	if err = results.Err(); err != nil {
+		return errors.Wrap(err, "error occurred during iteration of eager loaded relations for highlights")
+	}
+
+	if singular {
+		object.R.Highlights = resultSlice
+		for _, foreign := range resultSlice {
+			if foreign.R == nil {
+				foreign.R = &highlightR{}
+			}
+			foreign.R.Game = object
+		}
+		return nil
+	}
+
+	for _, foreign := range resultSlice {
+		for _, local := range slice {
+			if local.GameID == foreign.GameID {
+				local.R.Highlights = append(local.R.Highlights, foreign)
+				if foreign.R == nil {
+					foreign.R = &highlightR{}
+				}
+				foreign.R.Game = local
+				break
+			}
+		}
+	}
+
+	return nil
+}
+
+// AddHighlights adds the given related objects to the existing relationships
+// of the game, optionally inserting them as new records.
+// Appends related to o.R.Highlights.
+// Sets related.R.Game appropriately.
+func (o *Game) AddHighlights(ctx context.Context, exec boil.ContextExecutor, insert bool, related ...*Highlight) error {
+	var err error
+	for _, rel := range related {
+		if insert {
+			rel.GameID = o.GameID
+			if err = rel.Insert(ctx, exec, boil.Infer()); err != nil {
+				return errors.Wrap(err, "failed to insert into foreign table")
+			}
+		} else {
+			updateQuery := fmt.Sprintf(
+				"UPDATE \"highlights\" SET %s WHERE %s",
+				strmangle.SetParamNames("\"", "\"", 0, []string{"game_id"}),
+				strmangle.WhereClause("\"", "\"", 0, highlightPrimaryKeyColumns),
+			)
+			values := []interface{}{o.GameID, rel.ID, rel.GameID}
+
+			if boil.IsDebug(ctx) {
+				writer := boil.DebugWriterFrom(ctx)
+				fmt.Fprintln(writer, updateQuery)
+				fmt.Fprintln(writer, values)
+			}
+			if _, err = exec.ExecContext(ctx, updateQuery, values...); err != nil {
+				return errors.Wrap(err, "failed to update foreign table")
+			}
+
+			rel.GameID = o.GameID
+		}
+	}
+
+	if o.R == nil {
+		o.R = &gameR{
+			Highlights: related,
+		}
+	} else {
+		o.R.Highlights = append(o.R.Highlights, related...)
+	}
+
+	for _, rel := range related {
+		if rel.R == nil {
+			rel.R = &highlightR{
+				Game: o,
+			}
+		} else {
+			rel.R.Game = o
+		}
+	}
+	return nil
 }
 
 // Games retrieves all the records using an executor.

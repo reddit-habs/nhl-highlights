@@ -29,7 +29,7 @@ func (c Client) doGet(url string, response any) error {
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode < 200 && resp.StatusCode >= 300 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("error performing GET %q: got status %d", url, resp.StatusCode)
 	}
 

@@ -1,2 +1,2 @@
 #!/bin/sh
-go run github.com/sbstp/nhl-highlights/cmd/nhl-highlights -incremental
+go run github.com/sbstp/nhl-highlights/cmd "$@"

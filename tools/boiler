@@ -11,7 +11,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Seed database file
-go run github.com/sbstp/nhl-highlights/cmd/database "$DATABASE_PATH"
+go run github.com/sbstp/nhl-highlights/cmd create-database "$DATABASE_PATH"
 
 # Write sqlboiler.toml config
 tee "sqlboiler.toml" > /dev/null <<EOF
@@ -21,4 +21,4 @@ EOF
 
 # Regenerate models
 rm -rf models
-sqlboiler sqlite3 --no-hooks --no-tests
+PATH="$PATH:$HOME/go/bin" sqlboiler sqlite3 --no-hooks --no-tests

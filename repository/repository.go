@@ -14,6 +14,7 @@ import (
 
 const pragmas = `
 PRAGMA foreign_keys = ON;
+PRAGMA journal_mode = WAL;
 `
 
 const schema = `
@@ -28,16 +29,11 @@ CREATE TABLE IF NOT EXISTS games (
 	extended TEXT
 );
 
-CREATE TABLE IF NOT EXISTS highlights (
-	id INTEGER NOT NULL,
-	game_id INTEGER NOT NULL,
-	media_url TEXT NOT NULL,
-	event_id INT,
-	title TEXT,
-	blurb TEXT,
-	description TEXT,
-	PRIMARY KEY (id, game_id),
-	FOREIGN KEY(game_id) REFERENCES games(game_id)
+CREATE TABLE IF NOT EXISTS cached_pages (
+	id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+	season TEXT NOT NULL,
+	team TEXT,
+	content BLOB NOT NULL
 );
 `
 
@@ -90,11 +86,12 @@ func (r *Repository) GetGamesMissingContent(incremental bool) ([]*models.Game, e
 		cutoff := time.Now().AddDate(0, 0, -3).Format("2006-01-02")
 		mods = append(mods, models.GameWhere.Date.GTE(cutoff))
 	}
+
 	return models.Games(mods...).All(context.TODO(), r.db)
 }
 
 func (r *Repository) GetGames() ([]*models.Game, error) {
-	return models.Games(qm.Load(models.GameRels.Highlights)).All(context.TODO(), r.db)
+	return models.Games().All(context.TODO(), r.db)
 }
 
 func (r *Repository) UpsertGame(game *models.Game) error {
@@ -115,22 +112,22 @@ func (r *Repository) UpsertGame(game *models.Game) error {
 	return nil
 }
 
-func (r *Repository) UpsertHighlights(highlights []*models.Highlight) error {
+func (r *Repository) UpdateCachedPagges(cachedPages []*models.CachedPage) error {
 	tx, err := r.db.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	for _, h := range highlights {
-		if err := h.Upsert(context.TODO(), tx, true, []string{models.HighlightColumns.ID, models.HighlightColumns.GameID}, boil.Infer(), boil.Infer()); err != nil {
+	if _, err := models.CachedPages().DeleteAll(context.TODO(), tx); err != nil {
+		return err
+	}
+
+	for _, c := range cachedPages {
+		if err := c.Insert(context.TODO(), tx, boil.Infer()); err != nil {
 			return err
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit()
 }

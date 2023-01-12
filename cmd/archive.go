@@ -1,11 +1,7 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"log"
-	"os"
-	"strconv"
 	"strings"
 
 	"github.com/sbstp/nhl-highlights/generate"
@@ -15,34 +11,7 @@ import (
 	"github.com/volatiletech/null/v8"
 )
 
-var incremental bool
-var startDate string
-var endDate string
-var outputDir string
-
-func main() {
-	flag.BoolVar(&incremental, "incremental", false, "try to get highlights from the past few days")
-	flag.StringVar(&startDate, "start-date", "", "start date of scan")
-	flag.StringVar(&endDate, "end-date", "", "end date of scan")
-	flag.StringVar(&outputDir, "output-dir", "output", "directory where HTML files end up")
-	flag.Parse()
-
-	if !incremental && (len(startDate) == 0 || len(endDate) == 0) {
-		fmt.Fprintln(os.Stderr, "-start-date and -end-date are required in scan mode")
-		return
-	}
-
-	if incremental && (len(startDate) > 0 || len(endDate) > 0) {
-		fmt.Fprintln(os.Stderr, "-start-date and -end-date have no meaning in incremental mode")
-		return
-	}
-
-	if err := realMain(); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func realMain() error {
+func realMain(incremental bool, startDate string, endDate string) error {
 	repo, err := repository.New("games.db")
 	if err != nil {
 		return err
@@ -110,8 +79,6 @@ func realMain() error {
 		if err := repo.UpsertGame(game); err != nil {
 			return err
 		}
-
-		scanHighlights(repo, content, game)
 	}
 
 	games, err := repo.GetGames()
@@ -119,7 +86,13 @@ func realMain() error {
 		return err
 	}
 
-	if err := generate.Pages(teamsCache, outputDir, games); err != nil {
+	cachedPages, err := generate.Pages(teamsCache, games)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("Saving %d cached pages...", len(cachedPages))
+	if err := repo.UpdateCachedPagges(cachedPages); err != nil {
 		return err
 	}
 
@@ -169,40 +142,4 @@ func getBestMp4Playback(playbacks []*nhlapi.ContentPlayback) string {
 		return links[len(links)-1]
 	}
 	return ""
-}
-
-func scanHighlights(repo *repository.Repository, content *nhlapi.ContentResponse, game *models.Game) {
-	var highlights []*models.Highlight
-
-	for _, item := range content.Highlights.Scoreboard.Items {
-		video := getBestMp4Playback(item.Playbacks)
-
-		var eventID null.Int64
-		for _, kw := range item.Keywords {
-			if kw.Type == "statsEventId" {
-				eventID = null.Int64From(stringToInt64(kw.Value))
-			}
-		}
-
-		highlights = append(highlights, &models.Highlight{
-			ID:          stringToInt64(item.ID),
-			GameID:      game.GameID,
-			MediaURL:    video,
-			EventID:     eventID,
-			Title:       null.StringFrom(item.Title),
-			Blurb:       null.StringFrom(item.Blurb),
-			Description: null.StringFrom(item.Description),
-		})
-	}
-
-	repo.UpsertHighlights(highlights)
-
-}
-
-func stringToInt64(s string) int64 {
-	x, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		panic(err)
-	}
-	return x
 }

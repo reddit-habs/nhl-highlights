@@ -31,7 +31,7 @@ func newArchiveIncrementalCmd() *cobra.Command {
 		Use:   "archive-incremental",
 		Short: "archive higlights from the past few days",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return realMain(true, "", "")
+			return archive(true, "", "")
 		},
 	}
 }
@@ -44,7 +44,7 @@ func newArchiveRangeCmd() *cobra.Command {
 		Use:   "archive-range",
 		Short: "archive higlights from the given date range",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return realMain(false, startDate, endDate)
+			return archive(false, startDate, endDate)
 		},
 	}
 

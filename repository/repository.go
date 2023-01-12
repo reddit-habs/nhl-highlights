@@ -8,6 +8,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sbstp/nhl-highlights/models"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
@@ -130,4 +131,8 @@ func (r *Repository) UpdateCachedPagges(cachedPages []*models.CachedPage) error 
 	}
 
 	return tx.Commit()
+}
+
+func (r *Repository) GetCachedPage(season string, team *string) (*models.CachedPage, error) {
+	return models.CachedPages(models.CachedPageWhere.Season.EQ(season), models.CachedPageWhere.Team.EQ(null.StringFromPtr(team))).One(context.TODO(), r.db)
 }

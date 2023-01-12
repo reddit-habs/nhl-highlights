@@ -11,11 +11,12 @@ import (
 	"github.com/volatiletech/null/v8"
 )
 
-func realMain(incremental bool, startDate string, endDate string) error {
+func archive(incremental bool, startDate string, endDate string) error {
 	repo, err := repository.New("games.db")
 	if err != nil {
 		return err
 	}
+	defer repo.Close()
 
 	client := nhlapi.NewClient()
 	teamsCache, err := nhlapi.NewTeamsCache(client)

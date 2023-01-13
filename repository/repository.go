@@ -136,3 +136,19 @@ func (r *Repository) UpdateCachedPagges(cachedPages []*models.CachedPage) error 
 func (r *Repository) GetCachedPage(season string, team *string) (*models.CachedPage, error) {
 	return models.CachedPages(models.CachedPageWhere.Season.EQ(season), models.CachedPageWhere.Team.EQ(null.StringFromPtr(team))).One(context.TODO(), r.db)
 }
+
+func (r *Repository) GetCurrentSeason() (string, error) {
+	var season string
+	row := r.db.QueryRow("SELECT MAX(season) FROM games")
+	if err := row.Scan(&season); err != nil {
+		return "", err
+	}
+	return cleanupSeason(season), nil
+}
+
+func cleanupSeason(s string) string {
+	if len(s) == 8 {
+		return s[:4] + "-" + s[4:]
+	}
+	return s
+}

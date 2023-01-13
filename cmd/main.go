@@ -90,39 +90,3 @@ func newCreateDatabaseCmd() *cobra.Command {
 		},
 	}
 }
-
-// func scanHighlights(repo *repository.Repository, content *nhlapi.ContentResponse, game *models.Game) {
-// 	var highlights []*models.Highlight
-
-// 	for _, item := range content.Highlights.Scoreboard.Items {
-// 		video := getBestMp4Playback(item.Playbacks)
-
-// 		var eventID null.Int64
-// 		for _, kw := range item.Keywords {
-// 			if kw.Type == "statsEventId" {
-// 				eventID = null.Int64From(stringToInt64(kw.Value))
-// 			}
-// 		}
-
-// 		highlights = append(highlights, &models.Highlight{
-// 			ID:          stringToInt64(item.ID),
-// 			GameID:      game.GameID,
-// 			MediaURL:    video,
-// 			EventID:     eventID,
-// 			Title:       null.StringFrom(item.Title),
-// 			Blurb:       null.StringFrom(item.Blurb),
-// 			Description: null.StringFrom(item.Description),
-// 		})
-// 	}
-
-// 	repo.UpsertHighlights(highlights)
-
-// }
-
-// func stringToInt64(s string) int64 {
-// 	x, err := strconv.ParseInt(s, 10, 64)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	return x
-// }

@@ -97,6 +97,8 @@ func archive(incremental bool, startDate string, endDate string) error {
 		return err
 	}
 
+	log.Print("Archival done.")
+
 	return nil
 }
 

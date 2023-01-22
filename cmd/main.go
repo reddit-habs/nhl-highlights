@@ -1,7 +1,10 @@
 package main
 
 import (
+	"context"
 	"log"
+	"os"
+	"os/signal"
 
 	"github.com/sbstp/nhl-highlights/repository"
 	"github.com/spf13/cobra"
@@ -58,16 +61,25 @@ func newArchiveRangeCmd() *cobra.Command {
 
 func newServeCmd() *cobra.Command {
 	var bindAddress string
+	var incremental bool
 
 	cmd := &cobra.Command{
 		Use:   "serve",
 		Short: "serve highlights as HTML",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return serve(bindAddress)
+			sigs := make(chan os.Signal, 1)
+			signal.Notify(sigs, os.Interrupt, os.Interrupt)
+			ctx, cancel := context.WithCancel(context.Background())
+			go func() {
+				<-sigs
+				cancel()
+			}()
+			return serve(ctx, bindAddress, incremental)
 		},
 	}
 
 	cmd.Flags().StringVar(&bindAddress, "bind-address", ":9999", "bind address and port to use")
+	cmd.Flags().BoolVar(&incremental, "incremental", false, "run the incremental archiver periodically")
 
 	return cmd
 }

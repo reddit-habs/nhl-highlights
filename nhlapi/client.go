@@ -3,7 +3,6 @@ package nhlapi
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 )
 
@@ -54,7 +53,6 @@ func (c Client) Schedule(startDate, endDate string) (*ScheduleResponse, error) {
 func (c Client) Content(gameID int64) (*ContentResponse, error) {
 	response := &ContentResponse{}
 
-	log.Println(fmt.Sprintf("https://statsapi.web.nhl.com/api/v1/game/%d/content", gameID))
 	if err := c.doGet(fmt.Sprintf("https://statsapi.web.nhl.com/api/v1/game/%d/content", gameID), response); err != nil {
 		return nil, err
 	}

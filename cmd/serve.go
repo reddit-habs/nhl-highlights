@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -12,7 +14,7 @@ import (
 	"github.com/sbstp/nhl-highlights/repository"
 )
 
-func serve(bindAddress string) error {
+func serve(ctx context.Context, bindAddress string, incremental bool) error {
 	repo, err := repository.New("games.db")
 	if err != nil {
 		return err
@@ -53,7 +55,14 @@ func serve(bindAddress string) error {
 		}))
 	})
 
-	return http.ListenAndServe(bindAddress, r)
+	go http.ListenAndServe(bindAddress, r)
+
+	if incremental {
+		go startIncrementalArchiveTimer(ctx)
+	}
+
+	<-ctx.Done()
+	return nil
 }
 
 func htmlOrError(wrapped func(*http.Request) ([]byte, error)) http.HandlerFunc {
@@ -96,4 +105,30 @@ func renderCachedPage(repo *repository.Repository, season *string, team *string)
 		return nil, err
 	}
 	return cp.Content, nil
+}
+
+func startIncrementalArchiveTimer(ctx context.Context) {
+	doArchival := func() {
+		if err := archive(true, "", ""); err != nil {
+			log.Printf("[error] archival timer error: %v", err)
+		}
+	}
+
+	delay := time.After(time.Second * 5)
+	ticker := time.NewTicker(time.Minute * 15)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-delay:
+			// archive 5 second after starting the time (i.e. on program start)
+			doArchival()
+		case <-ticker.C:
+			// archive every 15 minutes
+			doArchival()
+		case <-ctx.Done():
+			// program terminated, stop timer
+			return
+		}
+	}
 }

@@ -9,4 +9,5 @@ FROM docker.io/alpine:3.17
 COPY --from=builder /build/build/nhl-highlights /usr/local/bin/nhl-highlights
 WORKDIR /data
 EXPOSE 9999
-CMD ["nhl-highlights", "serve", "--incremental"]
+ENTRYPOINT ["nhl-highlights"]
+CMD ["serve", "--incremental"]

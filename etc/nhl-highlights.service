@@ -1,0 +1,11 @@
+[Unit]
+Description=NHL Highlights Web App
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/bin/docker run --rm -p 9999:9999 -v /var/lib/nhl-highlights:/data
+
+[Install]
+WantedBy=multi-user.target

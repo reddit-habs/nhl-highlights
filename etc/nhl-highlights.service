@@ -5,7 +5,8 @@ After=network.target
 [Service]
 Type=simple
 Restart=always
-ExecStart=/usr/bin/docker run --rm -p 9999:9999 -v /var/lib/nhl-highlights:/data
+ExecStartPre=/usr/bin/docker pull ghcr.io/reddit-habs/nhl-highlights:latest
+ExecStart=/usr/bin/docker run --rm -p 9999:9999 -v /var/lib/nhl-highlights:/data ghcr.io/reddit-habs/nhl-highlights:latest
 
 [Install]
 WantedBy=multi-user.target

@@ -34,6 +34,14 @@ func serve(ctx context.Context, bindAddress string, incremental bool) error {
 			return renderClips(api, gameID)
 		}))
 
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/nhl/current/", http.StatusFound)
+		})
+
+		r.Get("/current", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/nhl/current/", http.StatusFound)
+		})
+
 		r.Get("/current/", htmlOrError(func(r *http.Request) ([]byte, error) {
 			return renderCachedPage(repo, nil, nil)
 		}))

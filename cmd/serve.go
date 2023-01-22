@@ -1,13 +1,13 @@
 package main
 
 import (
-	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/sbstp/nhl-highlights/generate"
 	"github.com/sbstp/nhl-highlights/nhlapi"
 	"github.com/sbstp/nhl-highlights/repository"
 )
@@ -23,64 +23,77 @@ func serve(bindAddress string) error {
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
 
 	r.Route("/nhl", func(r chi.Router) {
-		r.Get("/clips/{gamePk:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+		r.Get("/clips/{gamePk:[0-9]+}", htmlOrError(func(r *http.Request) ([]byte, error) {
 			gamePk := chi.URLParam(r, "gamePk")
 			gameID, _ := strconv.ParseInt(gamePk, 10, 64)
-			renderClips(w, api, gameID)
-		})
+			return renderClips(api, gameID)
+		}))
 
-		r.Get("/current", func(w http.ResponseWriter, r *http.Request) {
-			renderCachedPage(w, repo, nil, nil)
-		})
+		r.Get("/current/", htmlOrError(func(r *http.Request) ([]byte, error) {
+			return renderCachedPage(repo, nil, nil)
+		}))
 
-		r.Get("/{season}/", func(w http.ResponseWriter, r *http.Request) {
+		r.Get("/{season}/", htmlOrError(func(r *http.Request) ([]byte, error) {
 			season := chi.URLParam(r, "season")
-			renderCachedPage(w, repo, &season, nil)
-		})
+			return renderCachedPage(repo, &season, nil)
+		}))
 
-		r.Get("/{season}/index.html", func(w http.ResponseWriter, r *http.Request) {
+		r.Get("/{season}/index.html", htmlOrError(func(r *http.Request) ([]byte, error) {
 			season := chi.URLParam(r, "season")
-			renderCachedPage(w, repo, &season, nil)
-		})
+			return renderCachedPage(repo, &season, nil)
+		}))
 
-		r.Get("/{season}/{team}.html", func(w http.ResponseWriter, r *http.Request) {
+		r.Get("/{season}/{team}.html", htmlOrError(func(r *http.Request) ([]byte, error) {
 			season := chi.URLParam(r, "season")
 			team := chi.URLParam(r, "team")
-			renderCachedPage(w, repo, &season, &team)
-		})
+			return renderCachedPage(repo, &season, &team)
+		}))
 	})
 
 	return http.ListenAndServe(bindAddress, r)
 }
 
-func renderClips(w http.ResponseWriter, api nhlapi.Client, gameID int64) {
-	clips, err := scanClips(api, gameID)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	e := json.NewEncoder(w)
-	e.SetIndent("", "  ")
-	e.Encode(clips)
+func htmlOrError(wrapped func(*http.Request) ([]byte, error)) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		html, err := wrapped(r)
+		if err != nil {
+			log.Printf("[error] %v", err)
+			http.Error(w, "Internal server error occured. The error has been logged.", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("content-type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write(html)
+	})
+
 }
 
-func renderCachedPage(w http.ResponseWriter, repo *repository.Repository, season *string, team *string) {
+func renderClips(api nhlapi.Client, gameID int64) ([]byte, error) {
+	clips, err := scanClips(api, gameID)
+	if err != nil {
+		return nil, err
+	}
+	data, err := generate.Clips(clips)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func renderCachedPage(repo *repository.Repository, season *string, team *string) ([]byte, error) {
 	if season == nil {
-		x, _ := repo.GetCurrentSeason()
-		log.Printf(x)
+		x, err := repo.GetCurrentSeason()
+		if err != nil {
+			return nil, err
+		}
 		season = &x
 	}
-	w.Header().Set("Content-Type", "text/html")
 	cp, err := repo.GetCachedPage(*season, team)
 	if err != nil {
-		log.Printf("%v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return nil, err
 	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(cp.Content)
+	return cp.Content, nil
 }

@@ -87,7 +87,7 @@ func archive(incremental bool, startDate string, endDate string) error {
 		return err
 	}
 
-	cachedPages, err := generate.Pages(teamsCache, games)
+	cachedPages, err := generate.Highlights(teamsCache, games)
 	if err != nil {
 		return err
 	}

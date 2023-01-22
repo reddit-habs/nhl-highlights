@@ -3,7 +3,6 @@ package generate
 import (
 	"bytes"
 	_ "embed"
-	"html/template"
 	"sort"
 	"time"
 
@@ -12,12 +11,7 @@ import (
 	"github.com/volatiletech/null/v8"
 )
 
-//go:embed template.html
-var tplSource string
-
-var tpl = template.Must(template.New("template.html").Parse(tplSource))
-
-func Pages(teamsCache *nhlapi.TeamsCache, games []*models.Game) ([]*models.CachedPage, error) {
+func Highlights(teamsCache *nhlapi.TeamsCache, games []*models.Game) ([]*models.CachedPage, error) {
 	bySeason := groupBySeason(games)
 	results := []*models.CachedPage{}
 
@@ -53,24 +47,13 @@ func Pages(teamsCache *nhlapi.TeamsCache, games []*models.Game) ([]*models.Cache
 		}
 	}
 
-	// Remove "current" symlink if it already exists.
-	// os.Symlink won't overwrite it.
-	// currentPath := path.Join(outputDir, "current")
-	// if err := os.Remove(currentPath); err != nil {
-	// 	log.Printf("Could not remove current: %v", err)
-	// }
-
-	// if err := os.Symlink(path.Join(seasons[0]), currentPath); err != nil {
-	// 	log.Printf("Error symlinking: %v", err)
-	// }
-
 	return results, nil
 }
 
 func generateFile(root *Root) ([]byte, error) {
 	buf := bytes.Buffer{}
 
-	if err := tpl.Execute(&buf, root); err != nil {
+	if err := templates.ExecuteTemplate(&buf, "highlights.html", root); err != nil {
 		return nil, err
 	}
 

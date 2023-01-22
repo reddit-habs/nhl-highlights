@@ -4,22 +4,13 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/sbstp/nhl-highlights/generate"
 	"github.com/sbstp/nhl-highlights/nhlapi"
 	"github.com/volatiletech/null/v8"
 )
 
-type Clip struct {
-	ID          int64
-	GameID      int64
-	MediaURL    string
-	EventID     *int64
-	Title       string
-	Blurb       string
-	Description string
-}
-
-func scanClips(api nhlapi.Client, gameID int64) ([]*Clip, error) {
-	var clips []*Clip
+func scanClips(api nhlapi.Client, gameID int64) ([]*generate.Clip, error) {
+	var clips []*generate.Clip
 	content, err := api.Content(gameID)
 	if err != nil {
 		return nil, err
@@ -35,7 +26,7 @@ func scanClips(api nhlapi.Client, gameID int64) ([]*Clip, error) {
 			}
 		}
 
-		clips = append(clips, &Clip{
+		clips = append(clips, &generate.Clip{
 			ID:          stringToInt64(item.ID),
 			GameID:      gameID,
 			MediaURL:    video,

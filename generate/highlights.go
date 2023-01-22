@@ -1,26 +1,19 @@
 package generate
 
 import (
-	"bufio"
+	"bytes"
 	_ "embed"
-	"html/template"
-	"log"
-	"os"
-	"path"
 	"sort"
 	"time"
 
 	"github.com/sbstp/nhl-highlights/models"
 	"github.com/sbstp/nhl-highlights/nhlapi"
+	"github.com/volatiletech/null/v8"
 )
 
-//go:embed template.html
-var tplSource string
-
-var tpl = template.Must(template.New("template.html").Parse(tplSource))
-
-func Pages(teamsCache *nhlapi.TeamsCache, outputDir string, games []*models.Game) error {
+func Highlights(teamsCache *nhlapi.TeamsCache, games []*models.Game) ([]*models.CachedPage, error) {
 	bySeason := groupBySeason(games)
+	results := []*models.CachedPage{}
 
 	seasons := make([]string, 0)
 	for season := range bySeason {
@@ -29,55 +22,42 @@ func Pages(teamsCache *nhlapi.TeamsCache, outputDir string, games []*models.Game
 	sort.Sort(sort.Reverse(sort.StringSlice(seasons)))
 
 	for season, games := range bySeason {
-		outputPath := path.Join(outputDir, season, "index.html")
 		teams := teamsForSeason(teamsCache, games)
 
-		err := generateFile(outputPath, NewRoot(season, seasons, games, teams))
+		buf, err := generateFile(NewRoot(season, seasons, games, teams))
 		if err != nil {
-			return err
+			return nil, err
 		}
+		results = append(results, &models.CachedPage{
+			Season:  season,
+			Content: buf,
+		})
 
 		for team, games := range groupByTeam(games) {
-			outputPath := path.Join(outputDir, season, team+".html")
-
-			err := generateFile(outputPath, NewRoot(season, seasons, games, teams))
+			buf, err := generateFile(NewRoot(season, seasons, games, teams))
 			if err != nil {
-				return err
+				return nil, err
 			}
+
+			results = append(results, &models.CachedPage{
+				Season:  season,
+				Team:    null.StringFrom(team),
+				Content: buf,
+			})
 		}
 	}
 
-	// Remove "current" symlink if it already exists.
-	// os.Symlink won't overwrite it.
-	currentPath := path.Join(outputDir, "current")
-	if err := os.Remove(currentPath); err != nil {
-		log.Printf("Could not remove current: %v", err)
-	}
-
-	if err := os.Symlink(path.Join(seasons[0]), currentPath); err != nil {
-		log.Printf("Error symlinking: %v", err)
-	}
-
-	return nil
+	return results, nil
 }
 
-func generateFile(outputPath string, root *Root) error {
-	os.MkdirAll(path.Dir(outputPath), 0755)
+func generateFile(root *Root) ([]byte, error) {
+	buf := bytes.Buffer{}
 
-	file, err := os.Create(outputPath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	writer := bufio.NewWriter(file)
-	defer writer.Flush()
-
-	if err := tpl.Execute(writer, root); err != nil {
-		return err
+	if err := templates.ExecuteTemplate(&buf, "highlights.html", root); err != nil {
+		return nil, err
 	}
 
-	return nil
+	return buf.Bytes(), nil
 }
 
 func NewRoot(season string, seasons []string, games []*models.Game, teams []*nhlapi.Team) *Root {

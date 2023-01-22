@@ -1,10 +1,7 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	"github.com/sbstp/nhl-highlights/generate"
@@ -14,38 +11,12 @@ import (
 	"github.com/volatiletech/null/v8"
 )
 
-var incremental bool
-var startDate string
-var endDate string
-var outputDir string
-
-func main() {
-	flag.BoolVar(&incremental, "incremental", false, "try to get highlights from the past few days")
-	flag.StringVar(&startDate, "start-date", "", "start date of scan")
-	flag.StringVar(&endDate, "end-date", "", "end date of scan")
-	flag.StringVar(&outputDir, "output-dir", "output", "directory where HTML files end up")
-	flag.Parse()
-
-	if !incremental && (len(startDate) == 0 || len(endDate) == 0) {
-		fmt.Fprintln(os.Stderr, "-start-date and -end-date are required in scan mode")
-		return
-	}
-
-	if incremental && (len(startDate) > 0 || len(endDate) > 0) {
-		fmt.Fprintln(os.Stderr, "-start-date and -end-date have no meaning in incremental mode")
-		return
-	}
-
-	if err := realMain(); err != nil {
-		log.Fatal(err)
-	}
-}
-
-func realMain() error {
+func archive(incremental bool, startDate string, endDate string) error {
 	repo, err := repository.New("games.db")
 	if err != nil {
 		return err
 	}
+	defer repo.Close()
 
 	client := nhlapi.NewClient()
 	teamsCache, err := nhlapi.NewTeamsCache(client)
@@ -93,6 +64,7 @@ func realMain() error {
 		if err != nil {
 			return err
 		}
+
 		for _, epg := range content.Media.EPG {
 			if epg.Title == "Recap" && len(epg.Items) > 0 {
 				if url := getBestMp4Playback(epg.Items[0].Playbacks); len(url) > 0 {
@@ -115,9 +87,17 @@ func realMain() error {
 		return err
 	}
 
-	if err := generate.Pages(teamsCache, outputDir, games); err != nil {
+	cachedPages, err := generate.Highlights(teamsCache, games)
+	if err != nil {
 		return err
 	}
+
+	log.Printf("Saving %d cached pages...", len(cachedPages))
+	if err := repo.UpdateCachedPagges(cachedPages); err != nil {
+		return err
+	}
+
+	log.Print("Archival done.")
 
 	return nil
 }

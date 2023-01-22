@@ -8,9 +8,15 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/sbstp/nhl-highlights/models"
+	"github.com/volatiletech/null/v8"
 	"github.com/volatiletech/sqlboiler/v4/boil"
 	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 )
+
+const pragmas = `
+PRAGMA foreign_keys = ON;
+PRAGMA journal_mode = WAL;
+`
 
 const schema = `
 CREATE TABLE IF NOT EXISTS games (
@@ -22,6 +28,13 @@ CREATE TABLE IF NOT EXISTS games (
 	season TEXT NOT NULL,
 	recap TEXT,
 	extended TEXT
+);
+
+CREATE TABLE IF NOT EXISTS cached_pages (
+	id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+	season TEXT NOT NULL,
+	team TEXT,
+	content BLOB NOT NULL
 );
 `
 
@@ -35,6 +48,10 @@ func New(path string) (*Repository, error) {
 		return nil, err
 	}
 
+	if _, err := db.Exec(pragmas); err != nil {
+		return nil, err
+	}
+
 	if _, err := db.Exec(schema); err != nil {
 		return nil, err
 	}
@@ -42,6 +59,10 @@ func New(path string) (*Repository, error) {
 	return &Repository{
 		db: db,
 	}, nil
+}
+
+func (r *Repository) Close() error {
+	return r.db.Close()
 }
 
 func (r *Repository) GetGame(gameID int64, date string) (*models.Game, error) {
@@ -66,6 +87,7 @@ func (r *Repository) GetGamesMissingContent(incremental bool) ([]*models.Game, e
 		cutoff := time.Now().AddDate(0, 0, -3).Format("2006-01-02")
 		mods = append(mods, models.GameWhere.Date.GTE(cutoff))
 	}
+
 	return models.Games(mods...).All(context.TODO(), r.db)
 }
 
@@ -89,4 +111,44 @@ func (r *Repository) UpsertGame(game *models.Game) error {
 	}
 
 	return nil
+}
+
+func (r *Repository) UpdateCachedPagges(cachedPages []*models.CachedPage) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := models.CachedPages().DeleteAll(context.TODO(), tx); err != nil {
+		return err
+	}
+
+	for _, c := range cachedPages {
+		if err := c.Insert(context.TODO(), tx, boil.Infer()); err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+func (r *Repository) GetCachedPage(season string, team *string) (*models.CachedPage, error) {
+	return models.CachedPages(models.CachedPageWhere.Season.EQ(season), models.CachedPageWhere.Team.EQ(null.StringFromPtr(team))).One(context.TODO(), r.db)
+}
+
+func (r *Repository) GetCurrentSeason() (string, error) {
+	var season string
+	row := r.db.QueryRow("SELECT MAX(season) FROM games")
+	if err := row.Scan(&season); err != nil {
+		return "", err
+	}
+	return cleanupSeason(season), nil
+}
+
+func cleanupSeason(s string) string {
+	if len(s) == 8 {
+		return s[:4] + "-" + s[4:]
+	}
+	return s
 }

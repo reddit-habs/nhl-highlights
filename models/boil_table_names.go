@@ -4,7 +4,9 @@
 package models
 
 var TableNames = struct {
-	Games string
+	CachedPages string
+	Games       string
 }{
-	Games: "games",
+	CachedPages: "cached_pages",
+	Games:       "games",
 }

@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eux
+
+DATABASE_PATH="$(mktemp)"
+
+cleanup() {
+    rm "$DATABASE_PATH"
+    rm "sqlboiler.toml"
+}
+
+trap cleanup EXIT
+
+# Seed database file
+go run github.com/sbstp/nhl-highlights/cmd create-database "$DATABASE_PATH"
+
+# Write sqlboiler.toml config
+tee "sqlboiler.toml" > /dev/null <<EOF
+[sqlite3]
+dbname = "${DATABASE_PATH}"
+EOF
+
+# Regenerate models
+rm -rf models
+PATH="$PATH:$HOME/go/bin" sqlboiler sqlite3 --no-hooks --no-tests

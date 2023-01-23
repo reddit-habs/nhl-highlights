@@ -8,12 +8,22 @@
 </head>
 
 <body>
+    <p>
+        Clips are fetched in realtime from the NHL's API. They will show up
+        once the game starts and they are uploaded to the NHL's website.
+    </p>
+    <hr>
+    {{if not .Clips}}
+    <p>No clips available for now.</p>
+    {{else}}
     <ul>
         {{range .Clips}}
         <li>
             <a href="{{.MediaURL}}" target="_blank" rel="noreferrer">{{.Title}}</a>
         </li>
         {{end}}
+    </ul>
+    {{end}}
     </ul>
 </body>
 

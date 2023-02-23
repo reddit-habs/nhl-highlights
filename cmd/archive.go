@@ -62,7 +62,8 @@ func archive(incremental bool, startDate string, endDate string) error {
 		log.Printf("Getting content for game %d, date=%s", game.GameID, game.Date)
 		content, err := client.Content(game.GameID)
 		if err != nil {
-			return err
+			log.Printf("[error] could not get game: %v", err)
+			continue
 		}
 
 		for _, epg := range content.Media.EPG {

@@ -11,9 +11,8 @@ import (
 	"github.com/volatiletech/null/v8"
 )
 
-func Highlights(teamsCache *nhlapi.TeamsCache, games []*models.Game) ([]*models.CachedPage, error) {
+func Highlights(teamsCache *nhlapi.TeamsCache, games []*models.Game, stream chan *models.CachedPage) error {
 	bySeason := groupBySeason(games)
-	results := []*models.CachedPage{}
 
 	seasons := make([]string, 0)
 	for season := range bySeason {
@@ -26,28 +25,29 @@ func Highlights(teamsCache *nhlapi.TeamsCache, games []*models.Game) ([]*models.
 
 		buf, err := generateFile(NewRoot(season, seasons, games, teams))
 		if err != nil {
-			return nil, err
+			return err
 		}
-		results = append(results, &models.CachedPage{
+
+		stream <- &models.CachedPage{
 			Season:  season,
 			Content: buf,
-		})
+		}
 
 		for team, games := range groupByTeam(games) {
 			buf, err := generateFile(NewRoot(season, seasons, games, teams))
 			if err != nil {
-				return nil, err
+				return err
 			}
 
-			results = append(results, &models.CachedPage{
+			stream <- &models.CachedPage{
 				Season:  season,
 				Team:    null.StringFrom(team),
 				Content: buf,
-			})
+			}
 		}
 	}
 
-	return results, nil
+	return nil
 }
 
 func generateFile(root *Root) ([]byte, error) {

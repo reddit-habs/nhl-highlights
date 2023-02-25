@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"strings"
 
@@ -88,14 +89,20 @@ func archive(incremental bool, startDate string, endDate string) error {
 		return err
 	}
 
-	cachedPages, err := generate.Highlights(teamsCache, games)
-	if err != nil {
-		return err
-	}
+	stream := make(chan *models.CachedPage)
+	ctx, cancel := context.WithCancelCause(context.Background())
 
-	log.Printf("Saving %d cached pages...", len(cachedPages))
-	if err := repo.UpdateCachedPagges(cachedPages); err != nil {
-		return err
+	go func() {
+		err = generate.Highlights(teamsCache, games, stream)
+		defer close(stream)
+		if err != nil {
+			cancel(err)
+			log.Printf("Error generating highlights: %v", err)
+		}
+	}()
+
+	if err := repo.UpdateCachedPagesIteratively(ctx, stream); err != nil {
+		log.Printf("Update iterator error: %v", err)
 	}
 
 	log.Print("Archival done.")

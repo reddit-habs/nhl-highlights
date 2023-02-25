@@ -113,6 +113,34 @@ func (r *Repository) UpsertGame(game *models.Game) error {
 	return nil
 }
 
+func (r *Repository) UpdateCachedPagesIteratively(ctx context.Context, stream chan *models.CachedPage) error {
+	tx, err := r.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := models.CachedPages().DeleteAll(context.TODO(), tx); err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			// error occured in producer, rollback
+			return context.Cause(ctx)
+		case c, ok := <-stream:
+			if !ok {
+				// iterator closed without error, commit
+				return tx.Commit()
+			}
+			if err := c.Insert(context.TODO(), tx, boil.Infer()); err != nil {
+				return err
+			}
+		}
+	}
+}
+
 func (r *Repository) UpdateCachedPagges(cachedPages []*models.CachedPage) error {
 	tx, err := r.db.Begin()
 	if err != nil {

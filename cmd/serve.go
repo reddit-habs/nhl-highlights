@@ -46,6 +46,11 @@ func serve(ctx context.Context, bindAddress string, incremental bool) error {
 			return renderCachedPage(repo, nil, nil)
 		}))
 
+		r.Get("/current/{team}.html", htmlOrError(func(r *http.Request) ([]byte, error) {
+			team := chi.URLParam(r, "team")
+			return renderCachedPage(repo, nil, &team)
+		}))
+
 		r.Get("/{season}/", htmlOrError(func(r *http.Request) ([]byte, error) {
 			season := chi.URLParam(r, "season")
 			return renderCachedPage(repo, &season, nil)

@@ -1,6 +1,6 @@
 module github.com/sbstp/nhl-highlights
 
-go 1.18
+go 1.20
 
 require (
 	github.com/friendsofgo/errors v0.9.2

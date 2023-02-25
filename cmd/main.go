@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/sbstp/nhl-highlights/repository"
 	"github.com/spf13/cobra"
@@ -68,10 +69,11 @@ func newServeCmd() *cobra.Command {
 		Short: "serve highlights as HTML",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			sigs := make(chan os.Signal, 1)
-			signal.Notify(sigs, os.Interrupt, os.Interrupt)
+			signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 			ctx, cancel := context.WithCancel(context.Background())
 			go func() {
 				<-sigs
+				log.Printf("Clean shutdown requested...")
 				cancel()
 			}()
 			return serve(ctx, bindAddress, incremental)

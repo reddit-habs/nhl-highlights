@@ -2,6 +2,7 @@ package generate
 
 import (
 	"bytes"
+	"compress/gzip"
 	_ "embed"
 	"sort"
 	"time"
@@ -52,11 +53,13 @@ func Highlights(teamsCache *nhlapi.TeamsCache, games []*models.Game, stream chan
 
 func generateFile(root *Root) ([]byte, error) {
 	buf := bytes.Buffer{}
+	w := gzip.NewWriter(&buf)
 
-	if err := templates.ExecuteTemplate(&buf, "highlights.html", root); err != nil {
+	if err := templates.ExecuteTemplate(w, "highlights.html", root); err != nil {
 		return nil, err
 	}
 
+	w.Flush()
 	return buf.Bytes(), nil
 }
 

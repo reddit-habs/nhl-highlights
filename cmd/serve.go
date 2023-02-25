@@ -82,6 +82,7 @@ func htmlOrError(wrapped func(*http.Request) ([]byte, error)) http.HandlerFunc {
 			return
 		}
 		w.Header().Set("content-type", "text/html; charset=utf-8")
+		w.Header().Set("Content-Encoding", "gzip")
 		w.WriteHeader(http.StatusOK)
 		w.Write(html)
 	})

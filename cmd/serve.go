@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sbstp/nhl-highlights/generate"
 	"github.com/sbstp/nhl-highlights/nhlapi"
+	"github.com/sbstp/nhl-highlights/render"
 	"github.com/sbstp/nhl-highlights/repository"
 )
 
@@ -28,7 +29,7 @@ func serve(ctx context.Context, bindAddress string, incremental bool) error {
 	r.Use(middleware.Recoverer)
 
 	r.Route("/nhl", func(r chi.Router) {
-		r.Get("/clips/{gamePk:[0-9]+}", htmlOrError(func(r *http.Request) ([]byte, error) {
+		r.Get("/clips/{gamePk:[0-9]+}", htmlOrError(func(r *http.Request) (render.Render, error) {
 			gamePk := chi.URLParam(r, "gamePk")
 			gameID, _ := strconv.ParseInt(gamePk, 10, 64)
 			return renderClips(api, gameID)
@@ -42,30 +43,30 @@ func serve(ctx context.Context, bindAddress string, incremental bool) error {
 			http.Redirect(w, r, "/nhl/current/", http.StatusFound)
 		})
 
-		r.Get("/current/", htmlOrError(func(r *http.Request) ([]byte, error) {
+		r.Get("/current/", htmlOrError(func(r *http.Request) (render.Render, error) {
 			return renderCachedPage(repo, nil, nil)
 		}))
 
-		r.Get("/current/index.html", htmlOrError(func(r *http.Request) ([]byte, error) {
+		r.Get("/current/index.html", htmlOrError(func(r *http.Request) (render.Render, error) {
 			return renderCachedPage(repo, nil, nil)
 		}))
 
-		r.Get("/current/{team}.html", htmlOrError(func(r *http.Request) ([]byte, error) {
+		r.Get("/current/{team}.html", htmlOrError(func(r *http.Request) (render.Render, error) {
 			team := chi.URLParam(r, "team")
 			return renderCachedPage(repo, nil, &team)
 		}))
 
-		r.Get("/{season}/", htmlOrError(func(r *http.Request) ([]byte, error) {
+		r.Get("/{season}/", htmlOrError(func(r *http.Request) (render.Render, error) {
 			season := chi.URLParam(r, "season")
 			return renderCachedPage(repo, &season, nil)
 		}))
 
-		r.Get("/{season}/index.html", htmlOrError(func(r *http.Request) ([]byte, error) {
+		r.Get("/{season}/index.html", htmlOrError(func(r *http.Request) (render.Render, error) {
 			season := chi.URLParam(r, "season")
 			return renderCachedPage(repo, &season, nil)
 		}))
 
-		r.Get("/{season}/{team}.html", htmlOrError(func(r *http.Request) ([]byte, error) {
+		r.Get("/{season}/{team}.html", htmlOrError(func(r *http.Request) (render.Render, error) {
 			season := chi.URLParam(r, "season")
 			team := chi.URLParam(r, "team")
 			return renderCachedPage(repo, &season, &team)
@@ -82,23 +83,20 @@ func serve(ctx context.Context, bindAddress string, incremental bool) error {
 	return nil
 }
 
-func htmlOrError(wrapped func(*http.Request) ([]byte, error)) http.HandlerFunc {
+func htmlOrError(wrapped func(*http.Request) (render.Render, error)) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		html, err := wrapped(r)
+		content, err := wrapped(r)
 		if err != nil {
 			log.Printf("[error] %v", err)
 			http.Error(w, "Internal server error occured. The error has been logged.", http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("content-type", "text/html; charset=utf-8")
-		w.Header().Set("Content-Encoding", "gzip")
-		w.WriteHeader(http.StatusOK)
-		w.Write(html)
+		content.Render(w, http.StatusOK)
 	})
 
 }
 
-func renderClips(api nhlapi.Client, gameID int64) ([]byte, error) {
+func renderClips(api nhlapi.Client, gameID int64) (render.Render, error) {
 	clips, err := scanClips(api, gameID)
 	if err != nil {
 		return nil, err
@@ -107,10 +105,10 @@ func renderClips(api nhlapi.Client, gameID int64) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return data, nil
+	return render.HTML(data), nil
 }
 
-func renderCachedPage(repo *repository.Repository, season *string, team *string) ([]byte, error) {
+func renderCachedPage(repo *repository.Repository, season *string, team *string) (render.Render, error) {
 	if season == nil {
 		x, err := repo.GetCurrentSeason()
 		if err != nil {
@@ -122,7 +120,7 @@ func renderCachedPage(repo *repository.Repository, season *string, team *string)
 	if err != nil {
 		return nil, err
 	}
-	return cp.Content, nil
+	return render.CompressedHTML(cp.Content), nil
 }
 
 func startIncrementalArchiveTimer(ctx context.Context) {

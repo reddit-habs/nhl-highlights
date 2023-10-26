@@ -36,13 +36,19 @@ func archive(incremental bool, startDate string, endDate string) error {
 				if !isGameRelavant(game) {
 					continue
 				}
-				log.Printf("Updating game %d on date %s", game.GameID, date.Date)
-				g := gameFromSchedule(teamsCache, date.Date, game)
-				if g == nil {
-					continue
-				}
-				if err := repo.UpsertGame(g); err != nil {
+				exists, err := repo.GetGame(game.GameID, date.Date)
+				if err != nil {
 					return err
+				}
+				if exists == nil {
+					log.Printf("Adding game %d on date %s", game.GameID, date.Date)
+					g := gameFromSchedule(teamsCache, date.Date, game)
+					if g == nil {
+						continue
+					}
+					if err := repo.UpsertGame(g); err != nil {
+						return err
+					}
 				}
 			}
 		}

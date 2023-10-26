@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"strings"
 
 	"github.com/sbstp/nhl-highlights/generate"
 	"github.com/sbstp/nhl-highlights/models"
 	"github.com/sbstp/nhl-highlights/nhlapi"
+	"github.com/sbstp/nhl-highlights/nhlapi2"
 	"github.com/sbstp/nhl-highlights/repository"
 	"github.com/volatiletech/null/v8"
 )
@@ -25,24 +26,17 @@ func archive(incremental bool, startDate string, endDate string) error {
 		return err
 	}
 
-	schedule, err := client.Schedule(startDate, endDate)
-	if err != nil {
-		return err
-	}
+	clientv2 := nhlapi2.NewClient()
 
-	for _, date := range schedule.Dates {
-		log.Printf("Date: %s", date.Date)
-		for _, game := range date.Games {
-			log.Printf("Game: %s at %s", game.Teams.Away.TeamID.Name, game.Teams.Home.TeamID.Name)
-			if !isGameRelavant(game) {
-				continue
-			}
-			exists, err := repo.GetGame(game.GameID, date.Date)
-			if err != nil {
-				return err
-			}
-			if exists == nil {
-				log.Printf("Adding game %d on date %s", game.GameID, date.Date)
+	archiveChunk := func(schedule *nhlapi2.ScheduleResponse) error {
+		for _, date := range schedule.GameWeek {
+			log.Printf("Date: %s", date.Date)
+			for _, game := range date.Games {
+				log.Printf("Game: %s at %s", game.AwayTeam.Abbrev, game.HomeTeam.Abbrev)
+				if !isGameRelavant(game) {
+					continue
+				}
+				log.Printf("Updating game %d on date %s", game.GameID, date.Date)
 				g := gameFromSchedule(teamsCache, date.Date, game)
 				if g == nil {
 					continue
@@ -51,6 +45,38 @@ func archive(incremental bool, startDate string, endDate string) error {
 					return err
 				}
 			}
+		}
+
+		return nil
+	}
+
+	if incremental {
+		schedule, err := clientv2.Schedule("now")
+		if err != nil {
+			return err
+		}
+
+		if err := archiveChunk(schedule); err != nil {
+			return err
+		}
+	} else {
+		cursorDate := startDate
+		for {
+			log.Printf("Cursor date: %s, end date %s", cursorDate, endDate)
+			if cursorDate > endDate {
+				break
+			}
+
+			schedule, err := clientv2.Schedule(cursorDate)
+			if err != nil {
+				return err
+			}
+
+			if err := archiveChunk(schedule); err != nil {
+				return err
+			}
+
+			cursorDate = schedule.NextStartDate
 		}
 	}
 
@@ -61,24 +87,39 @@ func archive(incremental bool, startDate string, endDate string) error {
 
 	for _, game := range missing {
 		log.Printf("Getting content for game %d, date=%s", game.GameID, game.Date)
-		content, err := client.Content(game.GameID)
+		landing, err := clientv2.Landing(game.GameID)
 		if err != nil {
-			log.Printf("[error] could not get game: %v", err)
+			log.Printf("[error] could not get landing: %v", err)
 			continue
 		}
 
-		for _, epg := range content.Media.EPG {
-			if epg.Title == "Recap" && len(epg.Items) > 0 {
-				if url := getBestMp4Playback(epg.Items[0].Playbacks); len(url) > 0 {
-					game.Recap = null.StringFrom(url)
+		if landing.Summary != nil && landing.Summary.GameVideo != nil {
+			if landing.Summary.GameVideo.ThreeMinRecap != 0 {
+				videoMetadata, err := clientv2.VideoMetadata(landing.Summary.GameVideo.ThreeMinRecap)
+				if err != nil {
+					log.Printf("[error] could not get video metadata %v", err)
+				} else {
+					for _, src := range videoMetadata.Sources {
+						if src.Codec == "H264" && src.Container == "MP4" && len(src.Src) > 0 {
+							game.Recap = null.StringFrom(src.Src)
+						}
+					}
 				}
 			}
-			if epg.Title == "Extended Highlights" && len(epg.Items) > 0 {
-				if url := getBestMp4Playback(epg.Items[0].Playbacks); len(url) > 0 {
-					game.Extended = null.StringFrom(url)
+			if landing.Summary.GameVideo.CondensedGame != 0 {
+				videoMetadata, err := clientv2.VideoMetadata(landing.Summary.GameVideo.CondensedGame)
+				if err != nil {
+					log.Printf("[error] could not get video metadata %v", err)
+				} else {
+					for _, src := range videoMetadata.Sources {
+						if src.Codec == "H264" && src.Container == "MP4" && len(src.Src) > 0 {
+							game.Extended = null.StringFrom(src.Src)
+						}
+					}
 				}
 			}
 		}
+
 		if err := repo.UpsertGame(game); err != nil {
 			return err
 		}
@@ -112,45 +153,38 @@ func archive(incremental bool, startDate string, endDate string) error {
 
 // isGameRelevant checks if the game is relevant for what this program is doing.
 // We only care about preseason, regular and playoffs games.
-func isGameRelavant(game *nhlapi.ScheduleGame) bool {
+func isGameRelavant(game *nhlapi2.ScheduleGame) bool {
 	switch game.Type {
-	case nhlapi.GameTypePreseason, nhlapi.GameTypeRegular, nhlapi.GameTypePlayoffs:
+	case nhlapi2.GameTypePreseason, nhlapi2.GameTypeRegular, nhlapi2.GameTypePlayoffs:
 		return true
 	default:
 		return false
 	}
 }
 
-func gameFromSchedule(teamsCache *nhlapi.TeamsCache, date string, game *nhlapi.ScheduleGame) *models.Game {
-	away, ok := teamsCache.GetByID(game.Teams.Away.TeamID.ID)
-	if !ok {
-		return nil
-	}
-	home, ok := teamsCache.GetByID(game.Teams.Home.TeamID.ID)
-	if !ok {
-		return nil
-	}
+func gameFromSchedule(teamsCache *nhlapi.TeamsCache, date string, game *nhlapi2.ScheduleGame) *models.Game {
+	away := teamsCache.GetByAbbrev(game.AwayTeam.Abbrev)
+	home := teamsCache.GetByAbbrev(game.HomeTeam.Abbrev)
 	return &models.Game{
 		GameID:   game.GameID,
 		Date:     date,
-		Type:     game.Type,
+		Type:     convertGameType(game.Type),
 		Away:     away.Abbrev,
 		Home:     home.Abbrev,
-		Season:   game.Season,
+		Season:   fmt.Sprintf("%d", game.Season),
 		Recap:    null.String{},
 		Extended: null.String{},
 	}
 }
 
-func getBestMp4Playback(playbacks []*nhlapi.ContentPlayback) string {
-	links := make([]string, 0, 4)
-	for _, pb := range playbacks {
-		if strings.HasSuffix(pb.URL, ".mp4") {
-			links = append(links, pb.URL)
-		}
+func convertGameType(gameType int32) string {
+	switch gameType {
+	case nhlapi2.GameTypePreseason:
+		return nhlapi.GameTypePreseason
+	case nhlapi2.GameTypeRegular:
+		return nhlapi.GameTypeRegular
+	case nhlapi2.GameTypePlayoffs:
+		return nhlapi.GameTypePlayoffs
 	}
-	if len(links) > 0 {
-		return links[len(links)-1]
-	}
-	return ""
+	panic("unknown game type")
 }

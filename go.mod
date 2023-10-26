@@ -3,6 +3,7 @@ module github.com/sbstp/nhl-highlights
 go 1.20
 
 require (
+	github.com/carlmjohnson/requests v0.23.5
 	github.com/friendsofgo/errors v0.9.2
 	github.com/go-chi/chi/v5 v5.0.8
 	github.com/mattn/go-sqlite3 v1.14.16
@@ -22,6 +23,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/volatiletech/inflect v0.0.1 // indirect
 	github.com/volatiletech/randomize v0.0.1 // indirect
+	golang.org/x/net v0.15.0 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

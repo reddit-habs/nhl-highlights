@@ -3,6 +3,7 @@ package main
 import (
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/sbstp/nhl-highlights/generate"
 	"github.com/sbstp/nhl-highlights/nhlapi"
@@ -58,4 +59,17 @@ func stringToInt64(s string) int64 {
 		panic(err)
 	}
 	return x
+}
+
+func getBestMp4Playback(playbacks []*nhlapi.ContentPlayback) string {
+	links := make([]string, 0, 4)
+	for _, pb := range playbacks {
+		if strings.HasSuffix(pb.URL, ".mp4") {
+			links = append(links, pb.URL)
+		}
+	}
+	if len(links) > 0 {
+		return links[len(links)-1]
+	}
+	return ""
 }

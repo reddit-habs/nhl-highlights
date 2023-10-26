@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/sbstp/nhl-highlights/generate"
 	"github.com/sbstp/nhl-highlights/models"
@@ -91,7 +92,13 @@ func archive(incremental bool, startDate string, endDate string) error {
 		return err
 	}
 
+	today := time.Now().UTC().Format(time.DateOnly)
+
 	for _, game := range missing {
+		if game.Date > today {
+			log.Printf("Skipping game %d, date=%s because it's in the future", game.GameID, game.Date)
+			continue
+		}
 		log.Printf("Getting content for game %d, date=%s", game.GameID, game.Date)
 		landing, err := clientv2.Landing(game.GameID)
 		if err != nil {

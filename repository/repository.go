@@ -84,7 +84,7 @@ func (r *Repository) GetGamesMissingContent(incremental bool) ([]*models.Game, e
 		),
 	}
 	if incremental {
-		cutoff := time.Now().AddDate(0, 0, -3).Format("2006-01-02")
+		cutoff := time.Now().AddDate(0, 0, -3).Format(time.DateOnly)
 		mods = append(mods, models.GameWhere.Date.GTE(cutoff))
 	}
 
@@ -92,7 +92,8 @@ func (r *Repository) GetGamesMissingContent(incremental bool) ([]*models.Game, e
 }
 
 func (r *Repository) GetGames() ([]*models.Game, error) {
-	return models.Games().All(context.TODO(), r.db)
+	tomorrow := time.Now().AddDate(0, 0, 1).Format(time.DateOnly)
+	return models.Games(models.GameWhere.Date.LTE(tomorrow)).All(context.TODO(), r.db)
 }
 
 func (r *Repository) UpsertGame(game *models.Game) error {

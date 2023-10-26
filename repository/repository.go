@@ -93,7 +93,7 @@ func (r *Repository) GetGamesMissingContent(incremental bool) ([]*models.Game, e
 
 func (r *Repository) GetGames() ([]*models.Game, error) {
 	tomorrow := time.Now().AddDate(0, 0, 1).Format(time.DateOnly)
-	return models.Games(models.GameWhere.Date.LTE(tomorrow)).All(context.TODO(), r.db)
+	return models.Games(models.GameWhere.Date.LT(tomorrow)).All(context.TODO(), r.db)
 }
 
 func (r *Repository) UpsertGame(game *models.Game) error {
